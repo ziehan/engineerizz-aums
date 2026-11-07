@@ -8,6 +8,14 @@
     "start": "node index.js",
     "dev": "node --watch index.js"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "morgan": "^1.10.0",
+    "ollama": "^0.5.14"
+  },
   "devDependencies": {}
 }

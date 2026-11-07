@@ -1,8 +1,8 @@
-// Auth routes skeleton
-import { Router } from 'express';
+const express = require("express");
 
-const router = Router();
-
-// router.post('/login', authController.login);
-
-export default router;
+module.exports = (controller, limiter) => {
+  const router = express.Router();
+  router.post("/register", limiter, controller.register);
+  router.post("/login", limiter, controller.login);
+  return router;
+};
