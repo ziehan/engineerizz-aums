@@ -1,0 +1,14 @@
+{
+  "name": "aums-backend",
+  "version": "1.0.0",
+  "description": "Autonomous Urban Maintenance System (AUMS) - Core Backend API",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test test/**/*.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
