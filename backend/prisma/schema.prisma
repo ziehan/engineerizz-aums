@@ -1,10 +1,112 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// Data models will be defined here
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(CITIZEN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reports   Report[]
+}
+
+enum UserRole {
+  CITIZEN
+  FIELD_OFFICER
+  ADMIN
+}
+
+model Report {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  title               String
+  description         String
+  category            String
+  status              ReportStatus              @default(Pending)
+  priority            Priority                  @default(Medium)
+  locationAddress     String
+  latitude            Float
+  longitude           Float
+  photoUrl            String?
+  parentReportId      String?                   @db.Uuid
+  isDuplicate         Boolean                   @default(false)
+  duplicateCount      Int                       @default(0)
+  aiProcessed         Boolean                   @default(false)
+  requiresHumanReview Boolean                   @default(false)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  reporterId          String?                   @db.Uuid
+  embedding           Unsupported("vector")?
+  location            Unsupported("geography")?
+  actionPlan          ActionPlan?
+  auditLogs           AuditLog[]
+  parentReport        Report?                   @relation("ReportDuplicates", fields: [parentReportId], references: [id], onDelete: Cascade)
+  duplicates          Report[]                  @relation("ReportDuplicates")
+  reporter            User?                     @relation(fields: [reporterId], references: [id])
+
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([parentReportId])
+}
+
+model ActionPlan {
+  id                 String    @id @default(uuid()) @db.Uuid
+  reportId           String    @unique @db.Uuid
+  targetAgency       String
+  confidenceScore    Float
+  estimatedDays      Int
+  actionSteps        Json
+  confidenceMetadata Json?
+  approvedBy         String?
+  approvedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  report             Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  reportId        String   @db.Uuid
+  action          String
+  details         String
+  agentName       String?
+  payload         Json?
+  response        Json?
+  confidenceScore Float?
+  timestamp       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  report          Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([agentName])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+enum ReportStatus {
+  Pending
+  PENDING_AI
+  Approved
+  In_Progress
+  Resolved
+  Rejected
+}
+
+enum Priority {
+  Low
+  Medium
+  High
+}

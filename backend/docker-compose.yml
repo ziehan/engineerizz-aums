@@ -1,11 +1,16 @@
-version: '3.8'
-
 services:
-  backend:
+  postgres:
     build: .
-    ports:
-      - "5000:5000"
+    container_name: aums-postgres
+    restart: always
     environment:
-      - PORT=5000
-    env_file:
-      - .env
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: aums_jakarta
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

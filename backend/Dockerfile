@@ -1,12 +1,5 @@
-FROM node:20-alpine
+FROM pgvector/pgvector:pg16
 
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-
-EXPOSE 5000
-
-CMD ["npm", "start"]
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-16-postgis-3 \
+    && rm -rf /var/lib/apt/lists/*

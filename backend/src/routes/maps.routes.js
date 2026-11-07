@@ -1,8 +1,7 @@
-// Maps routes skeleton
-import { Router } from 'express';
+const express = require("express");
 
-const router = Router();
-
-// router.get('/geocode', mapsController.geocode);
-
-export default router;
+module.exports = (controller) => {
+  const router = express.Router();
+  router.get("/reverse-geocode", controller.reverseGeocode);
+  return router;
+};
