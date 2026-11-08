@@ -9,9 +9,10 @@ const MAX_RETRIES = 3;
 const RETRYABLE_STATUS_CODES = new Set([429, 503]);
 
 /**
- * Membuat klien Gemini menggunakan API key dari environment.
+ * Creates an instance of GoogleGenAI using environment configuration.
  *
- * @returns {GoogleGenAI} Klien Gemini yang siap digunakan
+ * @returns {GoogleGenAI} Initialized Google Generative AI client.
+ * @throws {Error} If GEMINI_API_KEY is not defined.
  */
 function getClient() {
   if (!process.env.GEMINI_API_KEY) {
@@ -21,9 +22,9 @@ function getClient() {
 }
 
 /**
- * Mengambil batas waktu request Gemini yang telah dinormalisasi.
+ * Retrieves the normalized timeout limit in milliseconds for Gemini API requests.
  *
- * @returns {number} Batas waktu request dalam milidetik
+ * @returns {number} Request timeout in milliseconds.
  */
 function getTimeoutMs() {
   const configured = Number(
@@ -35,10 +36,11 @@ function getTimeoutMs() {
 }
 
 /**
- * Mem-parsing respons teks Gemini menjadi objek JSON.
+ * Parses raw text response from Gemini into a valid JSON object.
  *
- * @param {string} rawText Teks respons dari Gemini
- * @returns {Object} Objek JSON hasil parsing
+ * @param {string} rawText - Raw text output from Gemini.
+ * @returns {Object} Parsed JSON object.
+ * @throws {Error} If input is empty or invalid JSON.
  */
 function parseJsonResponse(rawText) {
   if (typeof rawText !== "string" || !rawText.trim()) {
@@ -57,10 +59,10 @@ function parseJsonResponse(rawText) {
 }
 
 /**
- * Membersihkan dan menyesuaikan data Base64 sebelum dikirim ke Gemini.
+ * Cleans, sanitizes, and normalizes Base64 image strings.
  *
- * @param {string} value Nilai Base64 atau data URI yang akan dibersihkan
- * @returns {string} Data Base64 yang telah disanitasi dan dipadding
+ * @param {string} value - Raw Base64 string or data URL.
+ * @returns {string} Sanitized Base64 payload with valid padding.
  */
 function sanitizeBase64(value) {
   if (typeof value !== "string") return "";
@@ -84,11 +86,12 @@ function sanitizeBase64(value) {
 }
 
 /**
- * Mengubah berbagai format gambar menjadi bagian konten Gemini.
+ * Converts various image formats into standard Gemini inlineData or fileData parts.
  *
- * @param {string|Object} image String gambar atau objek image part
- * @param {string} [defaultMimeType="image/jpeg"] MIME type default gambar
- * @returns {Object|null} Objek inlineData/fileData atau null jika kosong
+ * @param {string|Object} image - Base64 string, data URL, external URL, or image part object.
+ * @param {string} [defaultMimeType="image/jpeg"] - Fallback MIME type.
+ * @returns {Object|null} Gemini-compatible image part or null if empty.
+ * @throws {TypeError} If image format is unsupported.
  */
 function imagePart(image, defaultMimeType = "image/jpeg") {
   if (!image) return null;
@@ -181,12 +184,12 @@ function imagePart(image, defaultMimeType = "image/jpeg") {
 }
 
 /**
- * Mengirim prompt multimodal ke Gemini dan memvalidasi respons terstruktur.
+ * Sends a multimodal prompt to Gemini and validates the structured JSON response.
  *
- * @param {string} systemPrompt Instruksi sistem untuk model
- * @param {Object} input Data request yang tidak tepercaya
- * @param {Object} [options={}] Opsi model, schema, timeout, dan gambar
- * @returns {Promise<Object>} Respons JSON tervalidasi dari Gemini
+ * @param {string} systemPrompt - System prompt instructions.
+ * @param {Object|string} input - User input data.
+ * @param {Object} [options={}] - Execution options including schema, models, and images.
+ * @returns {Promise<Object>} Validated structured JSON response.
  */
 async function generateJson(systemPrompt, input, options = {}) {
   const primaryModel =
@@ -208,16 +211,6 @@ async function generateJson(systemPrompt, input, options = {}) {
     const part = imagePart(image, options.defaultMimeType);
     if (part) parts.push(part);
   }
-  for (const part of parts) {
-    if (part.inlineData?.data) {
-      console.log("[ai-services] Gemini image diagnostics:", {
-        length: part.inlineData.data.length,
-        modulo4: part.inlineData.data.length % 4,
-        mimeType: part.inlineData.mimeType,
-        validCharacters: /^[A-Za-z0-9+/]+={0,2}$/.test(part.inlineData.data),
-      });
-    }
-  }
 
   let lastError;
   for (const [index, model] of models.entries()) {
@@ -230,23 +223,23 @@ async function generateJson(systemPrompt, input, options = {}) {
       lastError = error;
       if (index < models.length - 1) {
         console.warn(
-          `[ai-services] Gemini model ${model} failed; trying fallback ${models[index + 1]}.`,
+          `[aums-ai-services] Gemini model ${model} failed; trying fallback ${models[index + 1]}.`,
         );
         continue;
       }
     }
   }
-  console.error("[ai-services] Gemini providers exhausted:", lastError);
+  console.error("[aums-ai-services] Gemini providers exhausted:", lastError);
   throw lastError;
 }
 
 /**
- * Menjalankan satu request generateContent ke Gemini dengan timeout.
+ * Dispatches a content generation request to Gemini with exponential retry handling.
  *
- * @param {string} model Nama model Gemini
- * @param {Array<Object>} parts Bagian prompt dan gambar
- * @param {Object} options Opsi request Gemini
- * @returns {Promise<Object>} Respons JSON yang telah diparsing
+ * @param {string} model - Target Gemini model name.
+ * @param {Array<Object>} parts - Prompt text and image parts.
+ * @param {Object} options - Request options.
+ * @returns {Promise<Object>} Parsed JSON response.
  */
 async function requestGeminiJson(model, parts, options) {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
@@ -259,13 +252,21 @@ async function requestGeminiJson(model, parts, options) {
       const backoffMs = 1000 * 2 ** attempt;
       const jitterMs = Math.floor(Math.random() * 250);
       console.warn(
-        `[ai-services] Gemini request returned ${getErrorStatus(error)}; retrying in ${backoffMs + jitterMs}ms.`,
+        `[aums-ai-services] Gemini request returned ${getErrorStatus(error)}; retrying in ${backoffMs + jitterMs}ms.`,
       );
       await delay(backoffMs + jitterMs);
     }
   }
 }
 
+/**
+ * Executes a single generateContent call to Gemini within a timeout wrapper.
+ *
+ * @param {string} model - Target Gemini model name.
+ * @param {Array<Object>} parts - Prompt parts.
+ * @param {Object} options - Generation configuration and schema.
+ * @returns {Promise<Object>} Parsed and validated JSON object.
+ */
 async function requestGeminiJsonOnce(model, parts, options) {
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -331,6 +332,12 @@ async function requestGeminiJsonOnce(model, parts, options) {
   }
 }
 
+/**
+ * Resolves the numeric error status from error properties or message substrings.
+ *
+ * @param {Error|Object} error - Error object to inspect.
+ * @returns {number|undefined} Status code if found.
+ */
 function getErrorStatus(error) {
   const status = error?.status ?? error?.statusCode ?? error?.code;
   const numericStatus = Number(status);
@@ -339,10 +346,22 @@ function getErrorStatus(error) {
   return match ? Number(match[1]) : undefined;
 }
 
+/**
+ * Determines whether a Gemini request error can be retried.
+ *
+ * @param {Error|Object} error - Error object.
+ * @returns {boolean} True if status is 429 or 503.
+ */
 function isRetryableGeminiError(error) {
   return RETRYABLE_STATUS_CODES.has(getErrorStatus(error));
 }
 
+/**
+ * Asynchronously pauses execution for a given number of milliseconds.
+ *
+ * @param {number} milliseconds - Duration in milliseconds.
+ * @returns {Promise<void>} Resolves after timeout.
+ */
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

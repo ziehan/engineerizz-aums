@@ -8,22 +8,27 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+/**
+ * Seeds initial users and benchmark urban infrastructure reports into the AUMS database.
+ *
+ * @returns {Promise<void>}
+ */
 async function main() {
   const users = [
     {
-      email: "officer1@jakarta.go.id",
+      email: "officer1@aums.city",
       name: "Budi Petugas Lapangan",
       password: "OfficerPassword123!",
       role: "FIELD_OFFICER",
     },
     {
-      email: "admin@jakarta.go.id",
-      name: "Admin CRM Jakarta",
+      email: "admin@aums.city",
+      name: "Admin CRM AUMS",
       password: "AdminPassword123!",
       role: "ADMIN",
     },
     {
-      email: "warga1@jakarta.go.id",
+      email: "warga1@aums.city",
       name: "Warga Contoh",
       password: "WargaPassword123!",
       role: "CITIZEN",

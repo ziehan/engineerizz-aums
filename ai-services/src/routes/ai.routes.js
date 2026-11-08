@@ -3,9 +3,14 @@ const { sanitizeRequest } = require("../middlewares/sanitize.middleware");
 const authInternal = require("../middlewares/authInternal.middleware");
 const controller = require("../controllers/ai.controller");
 
+/**
+ * Express router exposing AUMS AI agent endpoints with internal authentication and sanitization.
+ */
 const router = express.Router();
+
 router.use(authInternal);
 router.use(sanitizeRequest);
+
 router.post("/validate", controller.validate);
 router.post("/plan", controller.plan);
 router.post("/verify", controller.verify);
