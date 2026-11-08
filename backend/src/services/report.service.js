@@ -1,6 +1,14 @@
 const { AiServiceUnavailableError } = require("./ai.service");
 
+/**
+ * Orchestrates report lifecycle operations and AI-assisted processing.
+ */
 class ReportService {
+  /**
+   * @param {ReportRepository} repository Report persistence dependency.
+   * @param {MapsService} mapsService Address lookup dependency.
+   * @param {AiIntegrationService} aiService AI integration dependency.
+   */
   constructor(repository, mapsService, aiService) {
     this.repository = repository;
     this.mapsService = mapsService;
@@ -8,10 +16,10 @@ class ReportService {
   }
 
   /**
-   * Membuat laporan, menjalankan validasi AI, deduplikasi, dan perencanaan.
+   * Creates a report and runs AI validation, deduplication, and planning.
    *
-   * @param {object} input Data laporan baru
-   * @returns {Promise<object>} Laporan dan hasil pemrosesan pipeline
+   * @param {object} input New report data.
+   * @returns {Promise<object>} Report and pipeline processing result.
    */
   async createReport(input = {}) {
     const candidateReports =
@@ -148,10 +156,10 @@ class ReportService {
   }
 
   /**
-   * Mengambil laporan berdasarkan filter status, kategori, dan prioritas.
+   * Retrieves reports using status, category, and priority filters.
    *
-   * @param {object} query Parameter filter laporan
-   * @returns {Promise<Array<object>>} Daftar laporan
+   * @param {object} query Report filter parameters.
+   * @returns {Promise<Array<object>>} Matching reports.
    */
   async listReports(query) {
     const filters = {};
@@ -162,10 +170,10 @@ class ReportService {
   }
 
   /**
-   * Mengambil satu laporan dan memastikan laporan ditemukan.
+   * Retrieves one report and ensures it exists.
    *
-   * @param {string} id ID laporan
-   * @returns {Promise<object>} Data laporan
+   * @param {string} id Report ID.
+   * @returns {Promise<object>} Report data.
    */
   async getReport(id) {
     const report = await this.repository.findById(id);
@@ -178,10 +186,10 @@ class ReportService {
   }
 
   /**
-   * Menghapus laporan setelah memastikan laporan tersedia.
+   * Deletes a report after ensuring it exists.
    *
-   * @param {string} id ID laporan
-   * @returns {Promise<object>} Status penghapusan
+   * @param {string} id Report ID.
+   * @returns {Promise<object>} Deletion result.
    */
   async deleteReport(id) {
     const report = await this.repository.findById(id);
@@ -195,10 +203,10 @@ class ReportService {
   }
 
   /**
-   * Menghapus laporan duplikat berdasarkan ID.
+   * Deletes a duplicate report by ID.
    *
-   * @param {string} duplicateId ID laporan duplikat
-   * @returns {Promise<object>} Status penghapusan
+   * @param {string} duplicateId Duplicate report ID.
+   * @returns {Promise<object>} Deletion result.
    */
   async deleteDuplicate(duplicateId) {
     const deleted = await this.repository.deleteDuplicateById(duplicateId);
@@ -211,14 +219,14 @@ class ReportService {
   }
 
   /**
-   * Mencatat audit AI tanpa mengganggu alur utama pemrosesan laporan.
+   * Records an AI audit without interrupting the main report-processing flow.
    *
-   * @param {string} reportId ID laporan
-   * @param {string} agentName Nama agent AI
-   * @param {object} payload Payload yang dikirim ke AI
-   * @param {object} response Respons mentah dari AI
-   * @param {number|null} confidenceScore Skor confidence jika tersedia
-   * @returns {Promise<void>} Penyelesaian pencatatan audit
+   * @param {string} reportId Report ID.
+   * @param {string} agentName AI agent name.
+   * @param {object} payload Payload sent to the AI service.
+   * @param {object} response Raw AI response.
+   * @param {number|null} confidenceScore Confidence score, when available.
+   * @returns {Promise<void>} Resolves when audit recording completes.
    */
   async recordAiAudit(
     reportId,
@@ -252,11 +260,11 @@ class ReportService {
   }
 
   /**
-   * Menyetujui laporan, memperbarui action plan, dan mencatat audit.
+   * Approves a report, updates its action plan, and records an audit event.
    *
-   * @param {string} id ID laporan
-   * @param {string} approvedBy Nama pihak yang menyetujui
-   * @returns {Promise<object>} Laporan yang telah disetujui
+   * @param {string} id Report ID.
+   * @param {string} approvedBy Approver name.
+   * @returns {Promise<object>} Approved report.
    */
   async approveReport(id, approvedBy) {
     await this.getReport(id);
@@ -274,11 +282,11 @@ class ReportService {
   }
 
   /**
-   * Memverifikasi bukti perbaikan melalui service AI.
+   * Verifies field repair evidence through the AI service.
    *
-   * @param {string} id ID laporan
-   * @param {object} proof Bukti verifikasi lapangan
-   * @returns {Promise<object>} Laporan yang telah diverifikasi
+   * @param {string} id Report ID.
+   * @param {object} proof Field verification evidence.
+   * @returns {Promise<object>} Verified report.
    */
   async verifyReport(id, proof) {
     const report = await this.getReport(id);
@@ -295,10 +303,10 @@ class ReportService {
   }
 
   /**
-   * Menormalkan respons AI menjadi struktur action plan aplikasi.
+   * Normalizes an AI response into the application's action-plan structure.
    *
-   * @param {object} aiPlanResponse Respons rencana dari AI
-   * @returns {object} Action plan yang telah dinormalisasi
+   * @param {object} aiPlanResponse AI planning response.
+   * @returns {object} Normalized action plan.
    */
   normalizePlan(aiPlanResponse = {}) {
     const planData = aiPlanResponse?.data?.data ?? aiPlanResponse?.data ?? {};
@@ -334,10 +342,10 @@ class ReportService {
   }
 
   /**
-   * Mengekstrak dan menormalkan skor confidence validasi AI.
+   * Extracts and normalizes AI validation confidence scores.
    *
-   * @param {object} validationData Data validasi dari AI
-   * @returns {object} Skor validitas dan deduplikasi
+   * @param {object} validationData AI validation data.
+   * @returns {object} Validity and deduplication scores.
    */
   extractValidationConfidence(validationData = {}) {
     const confidence = validationData.confidence || {};
@@ -355,11 +363,11 @@ class ReportService {
   }
 
   /**
-   * Mengonversi nilai confidence menjadi angka atau fallback.
+   * Converts a confidence value to a number or fallback.
    *
-   * @param {*} value Nilai confidence
-   * @param {number} fallback Nilai cadangan
-   * @returns {number} Nilai confidence numerik
+   * @param {*} value Confidence value.
+   * @param {number} fallback Fallback value.
+   * @returns {number} Numeric confidence value.
    */
   toConfidence(value, fallback) {
     const parsed = Number.parseFloat(value);
@@ -367,10 +375,10 @@ class ReportService {
   }
 
   /**
-   * Menentukan alasan laporan perlu ditinjau manual berdasarkan confidence.
+   * Determines why a report requires manual review based on confidence.
    *
-   * @param {object} scores Kumpulan skor confidence pipeline
-   * @returns {{requiresHumanReview: boolean, reasons: Array<string>}} Status dan alasan review
+   * @param {object} scores Pipeline confidence scores.
+   * @returns {{requiresHumanReview: boolean, reasons: Array<string>}} Review status and reasons.
    */
   getHumanReviewReasons(scores) {
     const reasons = [];
@@ -387,11 +395,11 @@ class ReportService {
   }
 
   /**
-   * Membentuk detail audit dari respons AI dan skor pipeline.
+   * Builds audit details from an AI response and pipeline scores.
    *
-   * @param {object} response Respons service AI
-   * @param {object} scores Skor confidence pipeline
-   * @returns {object} Detail audit terstruktur
+   * @param {object} response AI service response.
+   * @param {object} scores Pipeline confidence scores.
+   * @returns {object} Structured audit details.
    */
   buildAiAuditDetails(response, scores) {
     const data = response?.data?.data ?? response?.data ?? {};
@@ -404,11 +412,11 @@ class ReportService {
   }
 
   /**
-   * Menandai laporan untuk review manusia dan mencatat alasannya.
+   * Marks a report for human review and records the reasons.
    *
-   * @param {string} reportId ID laporan
-   * @param {Array<string>} reasons Daftar alasan review
-   * @returns {Promise<void>} Penyelesaian pembaruan status review
+   * @param {string} reportId Report ID.
+   * @param {Array<string>} reasons Review reasons.
+   * @returns {Promise<void>} Resolves when the review status is updated.
    */
   async markForHumanReview(reportId, reasons) {
     await this.repository.update(reportId, { requiresHumanReview: true });

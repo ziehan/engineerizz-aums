@@ -1,6 +1,6 @@
 const { chat, validateResponse } = require("../adapters/ollamaAdapter");
 const { generateJson } = require("../adapters/geminiAdapter");
-const { planning } = require("../prompts/systemPrompts");
+const { planning, bahasaIndonesiaRule } = require("../prompts/systemPrompts");
 
 /**
  * List of recognized municipal agency destinations for work order routing.
@@ -91,7 +91,10 @@ async function runPlanningAgent(reportData, ragContext = []) {
     try {
       const result = await chat(
         [
-          { role: "system", content: planning },
+          {
+            role: "system",
+            content: `${planning}\n${bahasaIndonesiaRule}`,
+          },
           {
             role: "user",
             content: `<user_data>\n${JSON.stringify(input)}\n</user_data>`,
@@ -107,10 +110,14 @@ async function runPlanningAgent(reportData, ragContext = []) {
         "[aums-ai-services] Ollama planning failed; falling back to Gemini:",
         ollamaError.message,
       );
-      const geminiResult = await generateJson(planning, input, {
-        model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
-        responseSchema,
-      });
+      const geminiResult = await generateJson(
+        `${planning}\n${bahasaIndonesiaRule}`,
+        input,
+        {
+          model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+          responseSchema,
+        },
+      );
       return validatePlanningResponse(geminiResult);
     }
   } catch (error) {

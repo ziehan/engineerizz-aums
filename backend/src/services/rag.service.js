@@ -1,15 +1,21 @@
 const ReportRepository = require("../repositories/report.repository");
 
+/**
+ * Builds retrieval-augmented generation context from report records.
+ */
 class RagService {
+  /**
+   * @param {ReportRepository} [repository] Report repository dependency.
+   */
   constructor(repository = new ReportRepository()) {
     this.repository = repository;
   }
 
   /**
-   * Mengambil dan menormalkan laporan serupa untuk konteks RAG.
+   * Retrieves and normalizes similar reports for RAG context.
    *
-   * @param {object} report Laporan target
-   * @returns {Promise<Array<object>>} Daftar laporan serupa
+   * @param {object} report Target report.
+   * @returns {Promise<Array<object>>} Similar reports.
    */
   async getSimilarReports(report) {
     const reports = await this.repository.findSimilarReports(report);
@@ -29,10 +35,10 @@ class RagService {
   }
 
   /**
-   * Membentuk laporan serupa menjadi struktur konteks untuk AI.
+   * Formats similar reports into a ranked AI context structure.
    *
-   * @param {Array<object>} reports Daftar laporan serupa
-   * @returns {Array<object>} Konteks RAG berperingkat
+   * @param {Array<object>} reports Similar reports.
+   * @returns {Array<object>} Ranked RAG context.
    */
   formatContext(reports) {
     return reports.map((report, index) => ({

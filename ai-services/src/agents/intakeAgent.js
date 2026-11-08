@@ -1,5 +1,5 @@
 const { generateJson } = require("../adapters/geminiAdapter");
-const { intake } = require("../prompts/systemPrompts");
+const { intake, bahasaIndonesiaRule } = require("../prompts/systemPrompts");
 
 /**
  * Expected JSON response schema for citizen report intake and fraud validation.
@@ -51,13 +51,17 @@ async function runIntakeAgent(data) {
     throw new TypeError("Intake agent data must be an object");
   }
   try {
-    const result = await generateJson(intake, data, {
-      model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
-      responseSchema,
-      images: [data.imageBase64 || data.photoBase64 || data.photoUrl].filter(
-        Boolean,
-      ),
-    });
+    const result = await generateJson(
+      `${intake}\n${bahasaIndonesiaRule}`,
+      data,
+      {
+        model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+        responseSchema,
+        images: [data.imageBase64 || data.photoBase64 || data.photoUrl].filter(
+          Boolean,
+        ),
+      },
+    );
     if (!result.isDuplicate && result.parentReportId !== null) {
       throw new Error("parentReportId must be null when isDuplicate is false");
     }

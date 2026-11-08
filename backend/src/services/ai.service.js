@@ -1,6 +1,9 @@
 const axios = require("axios");
 const env = require("../config/env.config");
 
+/**
+ * Error raised when the AUMS AI service cannot be reached.
+ */
 class AiServiceUnavailableError extends Error {
   constructor(message = "AI service temporarily unavailable") {
     super(message);
@@ -12,6 +15,9 @@ class AiServiceUnavailableError extends Error {
   }
 }
 
+/**
+ * Error raised when an AUMS AI service request exceeds its timeout.
+ */
 class AiServiceTimeoutError extends AiServiceUnavailableError {
   constructor(message) {
     super(message);
@@ -21,6 +27,9 @@ class AiServiceTimeoutError extends AiServiceUnavailableError {
   }
 }
 
+/**
+ * Error raised when the AUMS AI service returns an unsuccessful response.
+ */
 class AiServiceResponseError extends Error {
   constructor(
     message = "AI service failed to process request",
@@ -36,7 +45,14 @@ class AiServiceResponseError extends Error {
   }
 }
 
+/**
+ * Integrates the backend with the AUMS AI service and manages request failures.
+ */
 class AiIntegrationService {
+  /**
+   * @param {import("axios").AxiosInstance} [httpClient=axios] HTTP client used for AI requests.
+   * @param {object} [options={}] Circuit-breaker and timeout configuration.
+   */
   constructor(httpClient = axios, options = {}) {
     this.httpClient = httpClient;
 
@@ -49,11 +65,11 @@ class AiIntegrationService {
   }
 
   /**
-   * Mengirim payload ke AI dengan timeout, klasifikasi error, dan circuit breaker.
+   * Sends a payload to the AI service with timeout and circuit-breaker handling.
    *
-   * @param {string} endpoint Endpoint AI yang dituju
-   * @param {object} payload Payload request AI
-   * @returns {Promise<object>} Respons AI beserta metadata eksekusi
+   * @param {string} endpoint AI endpoint path.
+   * @param {object} payload AI request payload.
+   * @returns {Promise<object>} AI response with execution metadata.
    */
   async request(endpoint, payload) {
     if (this.isCircuitOpen()) {
@@ -147,10 +163,10 @@ class AiIntegrationService {
   }
 
   /**
-   * Membangun URL endpoint AI dari konfigurasi base URL.
+   * Builds an AI endpoint URL from the configured base URL.
    *
-   * @param {string} endpoint Path endpoint AI
-   * @returns {string} URL endpoint lengkap
+   * @param {string} endpoint AI endpoint path.
+   * @returns {string} Complete endpoint URL.
    */
   buildEndpointUrl(endpoint) {
     const baseUrl = env.aiServiceUrl;
@@ -184,10 +200,10 @@ class AiIntegrationService {
   }
 
   /**
-   * Menentukan apakah error disebabkan oleh timeout request.
+   * Determines whether an error was caused by a request timeout.
    *
-   * @param {Error} error Error dari HTTP client
-   * @returns {boolean} True jika error merupakan timeout
+   * @param {Error} error Error returned by the HTTP client.
+   * @returns {boolean} Whether the error represents a timeout.
    */
   isTimeoutError(error) {
     return (
@@ -198,10 +214,10 @@ class AiIntegrationService {
   }
 
   /**
-   * Menentukan apakah error menunjukkan service AI tidak tersedia.
+   * Determines whether an error indicates that the AI service is unavailable.
    *
-   * @param {Error} error Error dari HTTP client
-   * @returns {boolean} True jika service tidak tersedia
+   * @param {Error} error Error returned by the HTTP client.
+   * @returns {boolean} Whether the service is unavailable.
    */
   isUnavailableError(error) {
     const status = error.response?.status;
@@ -232,12 +248,12 @@ class AiIntegrationService {
   }
 
   /**
-   * Mencatat detail error request AI untuk diagnosis operasional.
+   * Logs AI request error details for operational diagnosis.
    *
-   * @param {string} endpoint Endpoint AI
-   * @param {string} url URL lengkap request
-   * @param {Error} error Error yang terjadi
-   * @returns {void} Tidak mengembalikan nilai
+   * @param {string} endpoint AI endpoint path.
+   * @param {string} url Complete request URL.
+   * @param {Error} error Error that occurred.
+   * @returns {void}
    */
   logError(endpoint, url, error) {
     console.error("[Backend] AI Service Error:", {
@@ -256,9 +272,9 @@ class AiIntegrationService {
   }
 
   /**
-   * Memeriksa status circuit breaker dan membuka kembali setelah cooldown.
+   * Checks the circuit-breaker state and allows a retry after the cooldown.
    *
-   * @returns {boolean} True jika request AI harus ditolak
+   * @returns {boolean} Whether the AI request should be rejected.
    */
   isCircuitOpen() {
     if (!this.circuitOpenedAt) {
@@ -280,9 +296,9 @@ class AiIntegrationService {
   }
 
   /**
-   * Mencatat kegagalan AI dan membuka circuit setelah ambang tercapai.
+   * Records an AI failure and opens the circuit after the threshold is reached.
    *
-   * @returns {void} Tidak mengembalikan nilai
+   * @returns {void}
    */
   recordFailure() {
     this.failureCount += 1;
@@ -300,9 +316,9 @@ class AiIntegrationService {
   }
 
   /**
-   * Mereset kegagalan dan status circuit setelah request berhasil.
+   * Resets failure counts and circuit state after a successful request.
    *
-   * @returns {void} Tidak mengembalikan nilai
+   * @returns {void}
    */
   resetCircuit() {
     const wasFailed = this.failureCount > 0 || this.circuitOpenedAt !== null;
@@ -316,11 +332,11 @@ class AiIntegrationService {
   }
 
   /**
-   * Membentuk payload validasi laporan dan mengirimkannya ke AI.
+   * Builds a report-validation payload and sends it to the AI service.
    *
-   * @param {object} reportData Data laporan yang divalidasi
-   * @param {Array<object>} candidateReports Kandidat laporan serupa
-   * @returns {Promise<object>} Respons validasi AI
+   * @param {object} reportData Report data to validate.
+   * @param {Array<object>} candidateReports Similar report candidates.
+   * @returns {Promise<object>} AI validation response.
    */
   validate(reportData, candidateReports = []) {
     const payload = {
@@ -351,22 +367,22 @@ class AiIntegrationService {
   }
 
   /**
-   * Menjalankan agent intake sebagai alias proses validasi laporan.
+   * Runs the intake agent as an alias for report validation.
    *
-   * @param {object} reportData Data laporan intake
-   * @param {Array<object>} candidateReports Kandidat laporan serupa
-   * @returns {Promise<object>} Respons intake AI
+   * @param {object} reportData Report intake data.
+   * @param {Array<object>} candidateReports Similar report candidates.
+   * @returns {Promise<object>} AI intake response.
    */
   runIntakeAgent(reportData, candidateReports = []) {
     return this.validate(reportData, candidateReports);
   }
 
   /**
-   * Membentuk payload perencanaan dan mengirim konteks RAG ke AI.
+   * Builds a planning payload and sends RAG context to the AI service.
    *
-   * @param {object} reportData Data laporan target
-   * @param {Array<object>} ragContext Konteks laporan serupa
-   * @returns {Promise<object>} Respons rencana AI
+   * @param {object} reportData Target report data.
+   * @param {Array<object>} ragContext Similar-report context.
+   * @returns {Promise<object>} AI planning response.
    */
   plan(reportData, ragContext = []) {
     const payload = {
@@ -385,22 +401,22 @@ class AiIntegrationService {
   }
 
   /**
-   * Menjalankan agent planning sebagai alias proses perencanaan.
+   * Runs the planning agent as an alias for report planning.
    *
-   * @param {object} reportData Data laporan target
-   * @param {Array<object>} ragContext Konteks laporan serupa
-   * @returns {Promise<object>} Respons planning AI
+   * @param {object} reportData Target report data.
+   * @param {Array<object>} ragContext Similar-report context.
+   * @returns {Promise<object>} AI planning response.
    */
   runPlanningAgent(reportData, ragContext = []) {
     return this.plan(reportData, ragContext);
   }
 
   /**
-   * Membentuk payload bukti verifikasi dan mengirimkannya ke AI.
+   * Builds a verification-evidence payload and sends it to the AI service.
    *
-   * @param {object} report Data laporan yang diverifikasi
-   * @param {object} proof Bukti perbaikan lapangan
-   * @returns {Promise<object>} Respons verifikasi AI
+   * @param {object} report Report data to verify.
+   * @param {object} proof Field repair evidence.
+   * @returns {Promise<object>} AI verification response.
    */
   verify(report, proof) {
     return this.request("verify", {
@@ -410,11 +426,11 @@ class AiIntegrationService {
   }
 
   /**
-   * Menjalankan agent verifikasi sebagai alias proses verifikasi.
+   * Runs the verification agent as an alias for report verification.
    *
-   * @param {object} report Data laporan yang diverifikasi
-   * @param {object} proof Bukti perbaikan lapangan
-   * @returns {Promise<object>} Respons verifikasi AI
+   * @param {object} report Report data to verify.
+   * @param {object} proof Field repair evidence.
+   * @returns {Promise<object>} AI verification response.
    */
   runVerificationAgent(report, proof) {
     return this.verify(report, proof);

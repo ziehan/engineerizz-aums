@@ -10,6 +10,14 @@ const allowedStatuses = new Set([
 ]);
 const allowedPriorities = new Set(["Low", "Medium", "High"]);
 
+const coordinateSchema = (minimum, maximum) =>
+  z.preprocess((value) => {
+    if (typeof value === "string" && value.trim() !== "") {
+      return Number(value);
+    }
+    return value;
+  }, z.number().finite().min(minimum).max(maximum));
+
 /**
  * Strips potentially dangerous HTML/markup characters from payload strings recursively.
  *
@@ -43,8 +51,8 @@ function validateReportPayload(req, res, next) {
       description: z.string().min(1).max(1000),
       auditNotes: z.string().max(500).optional(),
       category: z.string().min(1),
-      latitude: z.coerce.number().finite().min(-90).max(90),
-      longitude: z.coerce.number().finite().min(-180).max(180),
+      latitude: coordinateSchema(-90, 90),
+      longitude: coordinateSchema(-180, 180),
     })
     .passthrough();
   const result = reportSchema.safeParse(req.body);

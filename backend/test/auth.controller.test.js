@@ -21,7 +21,7 @@ function response() {
   };
 }
 
-test("register hashes password and omits it from response", async () => {
+test("AUMS registration hashes passwords and omits them from responses", async () => {
   const created = {
     id: "user-1",
     email: "citizen@example.com",
@@ -59,7 +59,7 @@ test("register hashes password and omits it from response", async () => {
   assert.equal(res.body.data.password, undefined);
 });
 
-test("login returns signed token and public user profile", async () => {
+test("AUMS login returns a signed token and public user profile", async () => {
   const user = {
     id: "user-1",
     email: "citizen@example.com",

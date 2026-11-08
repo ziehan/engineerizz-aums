@@ -1,7 +1,14 @@
 const axios = require("axios");
 const env = require("../config/env.config");
 
+/**
+ * Provides reverse geocoding through the configured Nominatim service.
+ */
 class GeoService {
+  /**
+   * @param {import("axios").AxiosInstance} [httpClient=axios] HTTP client.
+   * @param {object} [options={}] Service configuration overrides.
+   */
   constructor(httpClient = axios, options = {}) {
     this.httpClient = httpClient;
     this.baseUrl = options.baseUrl || env.nominatimUrl;
@@ -10,11 +17,11 @@ class GeoService {
   }
 
   /**
-   * Mengambil alamat dari Nominatim berdasarkan koordinat geografis.
+   * Resolves an address from Nominatim using geographic coordinates.
    *
-   * @param {number|string} latitude Latitude lokasi
-   * @param {number|string} longitude Longitude lokasi
-   * @returns {Promise<object>} Data alamat hasil reverse geocoding
+   * @param {number|string} latitude Geographic latitude.
+   * @param {number|string} longitude Geographic longitude.
+   * @returns {Promise<object>} Reverse-geocoded address data.
    */
   async reverseGeocode(latitude, longitude) {
     const lat = Number(latitude);

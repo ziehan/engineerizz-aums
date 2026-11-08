@@ -76,7 +76,9 @@ function startServer() {
  * @returns {void}
  */
 function gracefulShutdown(signal) {
-  console.log(`[aums-ai-services] ${signal} received; shutting down gracefully.`);
+  console.log(
+    `[aums-ai-services] ${signal} received; shutting down gracefully.`,
+  );
   if (!server) return process.exit(0);
   return server.close((error) => {
     if (error) {

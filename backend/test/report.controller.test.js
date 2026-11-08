@@ -44,7 +44,7 @@ function response() {
   };
 }
 
-test("uses processed image data in verification payload", async () => {
+test("AUMS verification uses processed image data in its payload", async () => {
   let payload;
   const { controller, updates } = createController({
     data: {
@@ -90,7 +90,7 @@ test("uses processed image data in verification payload", async () => {
   assert.equal(updates[0].data.status, "Resolved");
 });
 
-test("rejects missing images before calling AI", async () => {
+test("AUMS verification rejects missing images before calling AI", async () => {
   const { controller } = createController({ data: {} });
   let called = false;
   controller.aiService.request = async () => {
@@ -113,7 +113,7 @@ test("rejects missing images before calling AI", async () => {
   assert.equal(called, false);
 });
 
-test("rejects a report without a before image", async () => {
+test("AUMS verification rejects a report without a before image", async () => {
   const { controller } = createController({ data: {} }, null);
   const res = response();
   let nextError;
@@ -134,7 +134,7 @@ test("rejects a report without a before image", async () => {
   assert.equal(nextError.code, "INVALID_IMAGE_PAYLOAD");
 });
 
-test("flags negative AI verification for human review", async () => {
+test("AUMS verification flags negative AI results for human review", async () => {
   const { controller, updates, audits } = createController({
     data: {
       data: {
@@ -162,7 +162,7 @@ test("flags negative AI verification for human review", async () => {
   assert.equal(audits[0].action, "AI_FIELD_VERIFICATION_REJECTED");
 });
 
-test("rejects malformed AI verification response without updating report", async () => {
+test("AUMS verification rejects malformed AI responses without updating reports", async () => {
   const { controller, updates } = createController({
     data: { data: { isResolved: true } },
   });
@@ -186,7 +186,7 @@ test("rejects malformed AI verification response without updating report", async
   assert.equal(updates.length, 0);
 });
 
-test("rejects verification outside the 100 meter geofence", async () => {
+test("AUMS verification rejects locations outside the 100-meter geofence", async () => {
   const { controller } = createController({ data: {} });
   let called = false;
   controller.aiService.request = async () => {

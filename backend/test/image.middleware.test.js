@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const sharp = require("sharp");
 const { processImage } = require("../src/middlewares/image.middleware");
 
-test("processes uploaded images through Sharp", async () => {
+test("AUMS image middleware processes uploaded images through Sharp", async () => {
   const source = await sharp({
     create: {
       width: 1400,
@@ -29,7 +29,7 @@ test("processes uploaded images through Sharp", async () => {
   assert.equal(req.processedImageMimeType, "image/jpeg");
 });
 
-test("rejects an invalid image buffer", async () => {
+test("AUMS image middleware rejects an invalid image buffer", async () => {
   const req = { file: { buffer: Buffer.from("not-an-image") } };
   let receivedError;
 

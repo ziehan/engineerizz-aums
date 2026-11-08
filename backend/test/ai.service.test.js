@@ -10,7 +10,7 @@ function axiosError(code, status) {
   return error;
 }
 
-test("maps timeout to 504 without crashing", async () => {
+test("AUMS AI service maps timeout to 504 without crashing", async () => {
   const ai = new AiService({
     post: async () => {
       throw axiosError("ECONNABORTED");
@@ -27,7 +27,7 @@ test("maps timeout to 504 without crashing", async () => {
   );
 });
 
-test("maps connection refusal and 5xx to unavailable", async () => {
+test("AUMS AI service maps connection refusal and 5xx to unavailable", async () => {
   for (const error of [
     axiosError("ECONNREFUSED"),
     axiosError("EHTTP", 500),
@@ -47,7 +47,7 @@ test("maps connection refusal and 5xx to unavailable", async () => {
       },
     );
 
-    test("successful requests reset infrastructure failures", async () => {
+    test("AUMS AI service resets infrastructure failures after success", async () => {
       const ai = new AiService({
         post: async () => ({ status: 200, data: { success: true, data: {} } }),
       });
@@ -60,7 +60,7 @@ test("maps connection refusal and 5xx to unavailable", async () => {
   }
 });
 
-test("does not classify application failure as infrastructure failure", async () => {
+test("AUMS AI service separates application failures from infrastructure failures", async () => {
   const ai = new AiService({
     post: async () => ({
       status: 200,
@@ -79,7 +79,7 @@ test("does not classify application failure as infrastructure failure", async ()
   );
 });
 
-test("opens and recovers the circuit breaker", async () => {
+test("AUMS AI service opens and recovers the circuit breaker", async () => {
   let calls = 0;
   const ai = new AiService(
     {

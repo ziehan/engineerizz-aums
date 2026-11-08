@@ -1,10 +1,14 @@
 const { generateJson, imagePart } = require("../adapters/geminiAdapter");
-const { verification } = require("../prompts/systemPrompts");
+const {
+  verification,
+  bahasaIndonesiaRule,
+} = require("../prompts/systemPrompts");
 
 /**
  * Detailed anti-fraud and visual verification guidelines appended to the system prompt.
  */
 const systemPrompt = `${verification}
+${bahasaIndonesiaRule}
 
 Anti-Fraud and Quality Control Guidelines:
 1. Unique Location Matching: Strictly compare BEFORE and AFTER photos. Verify that both photos display the same permanent physical landmarks (e.g., fence, utility pole, tree, wall structure, buildings, pavement markings, sidewalk contours). Do not conclude match based only on generic similarity. If the background differs completely, set visualMatch: false, isResolved: false, and confidenceScore < 0.20.
