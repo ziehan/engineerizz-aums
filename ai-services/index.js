@@ -25,9 +25,14 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "10mb" }));
+
+/**
+ * Health check endpoint for monitoring service availability and LLM configuration.
+ */
 app.get("/health", (req, res) =>
   res.json({
     status: "ok",
+    service: "aums-ai-services",
     memory: process.memoryUsage(),
     aiAdapter: {
       geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
@@ -35,7 +40,9 @@ app.get("/health", (req, res) =>
     },
   }),
 );
+
 app.use("/api/v1/ai", aiRoutes);
+
 app.use((req, res) =>
   res.status(200).json({
     success: false,
@@ -50,19 +57,30 @@ app.use(errorMiddleware);
 
 let server;
 
+/**
+ * Starts the HTTP server listener for AUMS AI microservice.
+ *
+ * @returns {import("http").Server} Initialized HTTP server instance.
+ */
 function startServer() {
   server = app.listen(port, () =>
-    console.log(`AI service listening on port ${port}`),
+    console.log(`[aums-ai-services] AI service listening on port ${port}`),
   );
   return server;
 }
 
+/**
+ * Gracefully shuts down the HTTP server upon receiving OS lifecycle signals.
+ *
+ * @param {string} signal - Signal received (e.g. SIGTERM, SIGINT).
+ * @returns {void}
+ */
 function gracefulShutdown(signal) {
-  console.log(`[ai-services] ${signal} received; shutting down gracefully.`);
+  console.log(`[aums-ai-services] ${signal} received; shutting down gracefully.`);
   if (!server) return process.exit(0);
   return server.close((error) => {
     if (error) {
-      console.error("[ai-services] Graceful shutdown failed:", error);
+      console.error("[aums-ai-services] Graceful shutdown failed:", error);
       process.exitCode = 1;
     }
     process.exit();

@@ -1,6 +1,8 @@
 const { GoogleGenAI } = require("@google/genai");
-const Groq = require("groq-sdk");
 
+/**
+ * Validates mandatory environment variables for AUMS AI services.
+ */
 const requiredEnvironment = ["GEMINI_API_KEY", "INTERNAL_API_KEY", "PORT"];
 const missingEnvironment = requiredEnvironment.filter(
   (name) => !String(process.env[name] || "").trim(),
@@ -16,10 +18,18 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be an integer between 1 and 65535");
 }
 
+/**
+ * Primary Google Generative AI client instance.
+ * @type {GoogleGenAI|null}
+ */
 const gemini = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
+/**
+ * LLM and microservice configuration for AUMS AI Services.
+ * @module config/llm
+ */
 module.exports = {
   gemini,
   port,

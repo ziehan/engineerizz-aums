@@ -1,7 +1,7 @@
 {
-  "name": "backend",
+  "name": "aums-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Autonomous Urban Maintenance System (AUMS) - Core Backend API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -11,8 +11,16 @@
     "prisma:seed": "node prisma/seed.js",
     "test": "node --test test/*.test.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "aums",
+    "smart-city",
+    "autonomous-urban-maintenance-system",
+    "express",
+    "prisma",
+    "postgis",
+    "pgvector"
+  ],
+  "author": "AUMS Engineering Team",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -21,14 +29,14 @@
     "@prisma/client": "^7.10.0",
     "axios": "^1.20.0",
     "bcryptjs": "^3.0.2",
-    "express-rate-limit": "^7.5.0",
     "cors": "^2.8.6",
-    "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.2",
     "dotenv": "^18.0.7",
     "express": "^5.3.0",
-    "pg": "^8.23.1",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "pg": "^8.23.1",
     "sharp": "^0.34.3",
     "zod": "^3.25.76"
   },

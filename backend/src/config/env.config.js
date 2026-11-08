@@ -6,12 +6,17 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const nodeEnv = process.env.NODE_ENV || "development";
 const isProduction = nodeEnv === "production";
+
+/**
+ * Zod schema defining the required environment variables for the AUMS backend.
+ */
 const envSchema = z.object({
   DATABASE_URL: z.string().trim().min(1),
   AI_SERVICE_URL: z.string().url(),
   JWT_SECRET: z.string().trim().min(1).optional(),
   INTERNAL_API_KEY: z.string().trim().min(1).optional(),
 });
+
 const parsedEnv = envSchema.safeParse(process.env);
 const missing = parsedEnv.success
   ? []
@@ -36,6 +41,10 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 const host = process.env.HOST || "127.0.0.1";
 
+/**
+ * Read-only configuration object holding application environment settings.
+ * @module config/env
+ */
 module.exports = Object.freeze({
   databaseUrl: process.env.DATABASE_URL,
   port,

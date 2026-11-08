@@ -2,7 +2,14 @@ const DEFAULT_BASE_URL = "http://localhost:11434";
 const DEFAULT_MODEL = "qwen2.5:3b";
 const DEFAULT_TIMEOUT_MS = 30000;
 
+/**
+ * Custom error class for failures communicating with the Ollama service.
+ */
 class OllamaConnectionError extends Error {
+  /**
+   * @param {string} message - Error description.
+   * @param {Object} [options={}] - Additional error attributes.
+   */
   constructor(message, options = {}) {
     super(message);
     this.name = "OllamaConnectionError";
@@ -13,18 +20,18 @@ class OllamaConnectionError extends Error {
 }
 
 /**
- * Mengambil URL dasar layanan Ollama tanpa slash penutup.
+ * Resolves the base URL for the Ollama service without trailing slashes.
  *
- * @returns {string} URL dasar Ollama
+ * @returns {string} Sanitized base URL string.
  */
 function getBaseUrl() {
   return (process.env.OLLAMA_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
 }
 
 /**
- * Mengambil batas waktu request Ollama yang telah dinormalisasi.
+ * Resolves the timeout limit in milliseconds for Ollama HTTP requests.
  *
- * @returns {number} Batas waktu request dalam milidetik
+ * @returns {number} Request timeout in milliseconds.
  */
 function getTimeoutMs() {
   const configured = Number(
@@ -36,11 +43,12 @@ function getTimeoutMs() {
 }
 
 /**
- * Mem-parsing teks respons Ollama menjadi objek JSON.
+ * Parses raw text from Ollama into a JSON object.
  *
- * @param {string} rawText Teks respons Ollama
- * @param {string} [context="Ollama"] Nama konteks respons
- * @returns {Object} Objek JSON hasil parsing
+ * @param {string} rawText - Raw text response from Ollama.
+ * @param {string} [context="Ollama"] - Context name for error logging.
+ * @returns {Object} Parsed JSON payload.
+ * @throws {Error} If response text is empty or invalid JSON.
  */
 function parseJsonResponse(rawText, context = "Ollama") {
   if (typeof rawText !== "string" || !rawText.trim()) {
@@ -59,11 +67,12 @@ function parseJsonResponse(rawText, context = "Ollama") {
 }
 
 /**
- * Memvalidasi dan menormalisasi respons model berdasarkan schema.
+ * Validates and normalizes structured model responses against schema constraints.
  *
- * @param {Object} data Data respons model
- * @param {Object} schema Schema respons yang diharapkan
- * @returns {Object} Data respons yang telah divalidasi
+ * @param {Object} data - Parsed model response object.
+ * @param {Object} schema - Expected response schema.
+ * @returns {Object} Normalized and validated response object.
+ * @throws {Error} If missing required fields or encountering invalid types.
  */
 function validateResponse(data, schema) {
   const normalizedData = { ...data };
@@ -111,11 +120,12 @@ function validateResponse(data, schema) {
 }
 
 /**
- * Mengirim HTTP request ke layanan Ollama dengan timeout dan error terstruktur.
+ * Dispatches an HTTP request to the Ollama endpoint with timeout and error wrapping.
  *
- * @param {string} path Path endpoint Ollama
- * @param {Object} [options={}] Opsi fetch
- * @returns {Promise<Response>} Respons HTTP dari Ollama
+ * @param {string} path - Target API path.
+ * @param {Object} [options={}] - Fetch request options.
+ * @returns {Promise<Response>} HTTP Response from Ollama.
+ * @throws {OllamaConnectionError} If network or timeout issues occur.
  */
 async function request(path, options = {}) {
   const controller = new AbortController();
@@ -135,7 +145,7 @@ async function request(path, options = {}) {
   } catch (error) {
     const detail =
       error.name === "AbortError" ? "request timed out" : error.message;
-    console.error(`[ai-services] Ollama connection failed: ${detail}`);
+    console.error(`[aums-ai-services] Ollama connection failed: ${detail}`);
     throw new OllamaConnectionError(
       `Unable to connect to Ollama at ${getBaseUrl()}: ${detail}`,
       {
@@ -148,11 +158,11 @@ async function request(path, options = {}) {
 }
 
 /**
- * Menjalankan percakapan JSON melalui model Ollama.
+ * Executes a structured JSON chat completion through an Ollama model.
  *
- * @param {Array<Object>} messages Pesan percakapan model
- * @param {Object} [options={}] Opsi model dan request
- * @returns {Promise<Object>} Respons JSON dari model
+ * @param {Array<Object>} messages - Array of conversation messages.
+ * @param {Object} [options={}] - Chat and model options.
+ * @returns {Promise<Object>} Validated JSON response from Ollama.
  */
 async function chat(messages, options = {}) {
   const model = options.model || process.env.OLLAMA_MODEL || DEFAULT_MODEL;
@@ -181,19 +191,19 @@ async function chat(messages, options = {}) {
     return parseJsonResponse(envelope.message?.content, "Ollama model");
   } catch (error) {
     if (error instanceof OllamaConnectionError) {
-      console.error("[ai-services] Ollama request error:", error.message);
+      console.error("[aums-ai-services] Ollama request error:", error.message);
       throw error;
     }
-    console.error("[ai-services] Ollama response error:", error);
+    console.error("[aums-ai-services] Ollama response error:", error);
     throw error;
   }
 }
 
 /**
- * Memeriksa ketersediaan layanan Ollama.
+ * Performs a healthcheck check against the Ollama service tags endpoint.
  *
- * @param {Object} [options={}] Opsi timeout health check
- * @returns {Promise<boolean>} True jika layanan tersedia
+ * @param {Object} [options={}] - Options including timeoutMs.
+ * @returns {Promise<boolean>} True if Ollama service is reachable.
  */
 async function healthCheck(options = {}) {
   try {
