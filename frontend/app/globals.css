@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-neutral-100: #fafafa;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #cfcfcf;
+  --color-neutral-400: #b9b9b9;
+  --color-neutral-500: #a1a1a1;
+  --color-neutral-600: #8c8c8c;
+  --color-neutral-700: #747474;
+  --color-neutral-800: #5c5c5c;
+  --color-neutral-900: #454545;
+  --color-neutral-1000: #303030;
+
+  --color-blue-100: #DBEAFF;
+  --color-blue-200: #B4D2FF;
+  --color-blue-300: #94BFFF;
+  --color-blue-400: #6DA7FF;
+  --color-blue-500: #4C94FF;
+  --color-blue-600: #2F82FF;
+  --color-blue-700: #276DD7;
+  --color-blue-800: #1A53A7;
+  --color-blue-900: #154081;
+  --color-blue-1000: #132D55;
+
+  --color-red-100: #FFDBDC;
+  --color-red-200: #FFB4B5;
+  --color-red-300: #FF9494;
+  --color-red-400: #FF6D70;
+  --color-red-500: #FF4C4F;
+  --color-red-600: #FF2F2F;
+  --color-red-700: #D7272A;
+  --color-red-800: #A71A1D;
+  --color-red-900: #811517;
+  --color-red-1000: #551313;
+
+  --color-priority-medium: #FFD52F;
+  --color-priority-low: #7EFF57;
+  --color-priority-high: #FF2F2F;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 20px;
+}
+
+h1 {
+  font-size: 64px;
+}
+
+h2 {
+  font-size: 48px;
+}
+
+h3 {
+  font-size: 32px;
+}
+
+h4 {
+  font-size: 24px;
+}
+
+h5 {
+  font-size: 20px;
+}
+
+h6 {
+  font-size: 16px;
+}
+
+h7 {
+  font-size: 12px;
+}
+
+@media (max-width: 767px) {
+  h1 {
+    font-size: 32px;
+  }
+
+  h2 {
+    font-size: 24px;
+  }
+
+  h3 {
+    font-size: 16px;
+  }
+
+  h4 {
+    font-size: 14px;
+  }
+
+  h5 {
+    font-size: 12px;
+  }
+
+  h6 {
+    font-size: 8px;
+  }
+
+  h7 {
+    font-size: 6px;
+  }
+}
