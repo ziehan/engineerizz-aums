@@ -15,9 +15,14 @@ class MapsService {
   /**
    * Resolves an address from Google Maps with a local fallback.
    *
-   * @param {number|string} latitude Geographic latitude from a web request.
-   * @param {number|string} longitude Geographic longitude from a web request.
-   * @returns {Promise<string>} Resolved address.
+   * @description
+   * Normalizes latitude and longitude coordinates, invokes Google Maps Geocoding API if an API key
+   * is present, and gracefully defaults to mockAddress() when offline or when the key is omitted.
+   *
+   * @param {number|string} latitude - Geographic latitude from a web request [-90 to 90].
+   * @param {number|string} longitude - Geographic longitude from a web request [-180 to 180].
+   * @returns {Promise<string>} Human-readable resolved physical address.
+   * @throws {Error} Throws 400 Bad Request if coordinates are out of valid range.
    */
   async reverseGeocode(latitude, longitude) {
     const coordinates = this.normalizeCoordinates(latitude, longitude);

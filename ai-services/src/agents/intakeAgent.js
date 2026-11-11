@@ -34,7 +34,27 @@ const responseSchema = {
 };
 
 /**
+ * @typedef {Object} IntakeAgentOutput
+ * @property {boolean} isValid - Whether the reported issue represents genuine urban public infrastructure damage.
+ * @property {number} validityConfidence - Model confidence score between 0.0 and 1.0 for damage validity.
+ * @property {boolean} isDuplicate - True if matching report is found within 100 meters.
+ * @property {number} deduplicationConfidence - Model confidence score between 0.0 and 1.0 for duplication.
+ * @property {string|null} parentReportId - UUID of matching parent report if duplicate; null otherwise.
+ * @property {number} priorityScore - Computed priority integer between 1 and 100.
+ * @property {"Low"|"Medium"|"High"|"Critical"} urgencyLevel - Normalized urgency tier.
+ * @property {string} category - Classified infrastructure defect category.
+ * @property {string} reasoning - Evaluation reasoning narrative in Bahasa Indonesia.
+ */
+
+/**
  * Evaluates citizen report validity, duplication, category, and urgency score via Gemini.
+ *
+ * @description
+ * Intake & Visual Fraud Detection Agent for AUMS:
+ * 1. Analyzes incoming citizen complaint title, description, and attached photo.
+ * 2. Compares against existingReports candidate array located within 100 meters.
+ * 3. Detects visual duplication anomalies (identical staging, vehicle license plate, or camera angle).
+ * 4. Generates structured JSON output compliant with responseSchema.
  *
  * @param {Object} data - Incident report details and optional image evidence.
  * @param {string} data.title - Title of the report.
@@ -43,8 +63,9 @@ const responseSchema = {
  * @param {string} [data.imageBase64] - Base64 encoded photo evidence.
  * @param {string} [data.photoUrl] - URL reference to photo evidence.
  * @param {Array<Object>} [data.existingReports] - Candidate reports for deduplication.
- * @returns {Promise<Object>} Validated intake analysis results.
+ * @returns {Promise<IntakeAgentOutput>} Validated intake analysis results.
  * @throws {TypeError} If payload is not an object.
+ * @throws {Error} If parentReportId is populated when isDuplicate is false.
  */
 async function runIntakeAgent(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {

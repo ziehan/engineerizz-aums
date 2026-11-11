@@ -1,5 +1,16 @@
+/**
+ * Maximum permissible character length for untrusted text inputs.
+ */
 const MAX_TEXT_LENGTH = 5000;
+
+/**
+ * Maximum permissible byte length for embedded Base64 image payload strings (~9MB).
+ */
 const MAX_BASE64_LENGTH = 9 * 1024 * 1024;
+
+/**
+ * Regular expressions detecting common prompt injection attack vectors.
+ */
 const injectionPatterns = [
   /ignore\s+(all\s+)?previous\s+instructions?/gi,
   /disregard\s+(all\s+)?(previous| prior)\s+instructions?/gi,
@@ -12,6 +23,12 @@ const injectionPatterns = [
 
 /**
  * Removes prompt injection attempts and control characters while preserving text shape.
+ *
+ * @description
+ * Sanitizes untrusted user text inputs before model reasoning:
+ * 1. Matches against injectionPatterns and neutralizes malicious instruction overrides with '[removed]'.
+ * 2. Strips hazardous ASCII control characters (U+0000 to U+001F) to prevent terminal/parser exploits.
+ * 3. Trims whitespace and slices to MAX_TEXT_LENGTH (5,000 characters).
  *
  * @param {string} value - Raw text string from client.
  * @returns {string} Sanitized string safe for model reasoning.

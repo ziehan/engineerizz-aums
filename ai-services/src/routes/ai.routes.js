@@ -14,6 +14,8 @@ router.use(sanitizeRequest);
 router.post("/validate", controller.validate);
 router.post("/plan", controller.plan);
 router.post("/verify", controller.verify);
+router.post("/embed", controller.embed);
+router.post("/embedding", controller.embed);
 router.post("/intake", controller.validate);
 router.post("/planning", controller.plan);
 router.post("/verification", controller.verify);

@@ -6,6 +6,7 @@ const ReportRepository = require("./repositories/report.repository");
 const MapsService = require("./services/maps.service");
 const GeoService = require("./services/geo.service");
 const AiIntegrationService = require("./services/ai.service");
+const storageService = require("./services/storage.service");
 const ReportService = require("./services/report.service");
 const ReportController = require("./controllers/report.controller");
 const MapsController = require("./controllers/maps.controller");
@@ -35,6 +36,7 @@ const reportController = new ReportController({
   mapsService,
   geoService,
   aiService,
+  storageService,
   ragService: new RagService(repository),
 });
 const authController = new AuthController({ prisma });
@@ -54,6 +56,17 @@ const protectedLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
 });
+/**
+ * Health check endpoint reporting service availability, database connectivity, and process uptime.
+ *
+ * @description
+ * Handles GET /health endpoint. Runs `SELECT 1` on PostgreSQL via Prisma Client.
+ * Returns HTTP 200 with status: 'ok' if healthy, or HTTP 503 with status: 'degraded' if database is unreachable.
+ *
+ * @param {import("express").Request} req - Express request object.
+ * @param {import("express").Response} res - Express response object.
+ * @returns {Promise<import("express").Response>} JSON status payload.
+ */
 app.get("/health", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -72,7 +85,26 @@ app.get("/health", async (req, res) => {
     });
   }
 });
-app.use("/api/auth", authRoutes(authController, publicLimiter));
+app.use(
+  "/api/v1/auth",
+  authRoutes(
+    authController,
+    publicLimiter,
+    protectedLimiter,
+    authenticate,
+    requireRoles("ADMIN"),
+  ),
+);
+app.use(
+  "/api/auth",
+  authRoutes(
+    authController,
+    publicLimiter,
+    protectedLimiter,
+    authenticate,
+    requireRoles("ADMIN"),
+  ),
+);
 app.use(
   "/api/v1/reports",
   reportRoutes(
@@ -82,9 +114,9 @@ app.use(
     imageMiddleware,
     validateVerificationPayload,
     authenticate,
-    requireRoles("CITIZEN", "FIELD_OFFICER", "ADMIN"),
-    requireRoles("FIELD_OFFICER", "ADMIN"),
-    requireRoles("ADMIN"),
+    requireRoles("CITIZEN", "FIELD_OFFICER", "CRM_OFFICER", "ADMIN"),
+    requireRoles("FIELD_OFFICER", "CRM_OFFICER", "ADMIN"),
+    requireRoles("CRM_OFFICER", "ADMIN"),
     publicLimiter,
     protectedLimiter,
   ),
@@ -98,9 +130,9 @@ app.use(
     imageMiddleware,
     validateVerificationPayload,
     authenticate,
-    requireRoles("CITIZEN", "FIELD_OFFICER", "ADMIN"),
-    requireRoles("FIELD_OFFICER", "ADMIN"),
-    requireRoles("ADMIN"),
+    requireRoles("CITIZEN", "FIELD_OFFICER", "CRM_OFFICER", "ADMIN"),
+    requireRoles("FIELD_OFFICER", "CRM_OFFICER", "ADMIN"),
+    requireRoles("CRM_OFFICER", "ADMIN"),
     publicLimiter,
     protectedLimiter,
   ),

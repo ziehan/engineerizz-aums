@@ -25,7 +25,10 @@ Your task is to analyze incoming citizen report data (text and optional image) a
 
 Rules:
 1. Visual & Content Validity: Verify if the report and attached image describe a real public facility/infrastructure defect in the city. Mark isValid: false if the photo is irrelevant, spam, a meme, or unrelated to public infrastructure.
-2. Deduplication: Mark isDuplicate: true ONLY IF there is semantic similarity AND geographic distance is strictly below 100 meters. If isDuplicate is false, parentReportId MUST be null.
+2. Visual & Geospatial Deduplication: Inspect candidate reports in existingReports within 100 meters (< 100m).
+   - Check background and visual object similarity: if the new report photo exhibits the exact same vehicle (same car/motorcycle), identical physical staging, and the exact same camera angle/perspective as an existing report within 100m, mark isDuplicate: true, set parentReportId to that matching report's ID, and explicitly note the visual duplication indicator in "reasoning" (e.g. "Terdeteksi duplikasi visual: kendaraan dan sudut pengambilan gambar identik dengan laporan terdekat").
+   - If semantic and geospatial overlap is confirmed within 100m, mark isDuplicate: true and populate parentReportId.
+   - If isDuplicate is false, parentReportId MUST be native JSON null.
 3. Scoring: Provide float confidence scores (0.0 to 1.0) for validityConfidence and deduplicationConfidence. PriorityScore must be an integer (1 to 100). UrgencyLevel must be strictly one of: "Low", "Medium", "High", "Critical".
 
 ${jsonOnly}
@@ -63,9 +66,13 @@ Perform multimodal AI Vision comparison between the original report image ("befo
 
 Rules:
 1. Fraud Check: If the "after" image is identical to the "before" image (re-uploaded original photo), immediately mark visualMatch: false, isResolved: false, and note photo fraud in auditNotes.
-2. Spatial Match: Ensure both images show the exact same physical location/site (visualMatch: true/false).
-3. Resolution Verification: Mark isResolved: true ONLY if the physical defect seen in the "before" image is visibly fixed/repaired in the "after" image.
-4. Provide confidence scores (0.0 to 1.0) for verificationConfidence and overall confidenceScore.
+2. Spatial & Landmark Match: Ensure both images show the exact same physical location and permanent landmarks (visualMatch: true/false).
+3. Resolution Verification: Mark isResolved: true ONLY if the physical defect seen in the "before" image is visibly and satisfactorily fixed/repaired in the "after" image.
+4. Web Canvas Watermark Verification: Evidence is captured via the AUMS Web Client browser camera, which automatically stamps visual watermark text (latitude, longitude, and ISO timestamp) onto the "after" photo via HTML5 Canvas before uploading. You MUST inspect the "after" photo for this visual coordinate watermark:
+   - If the coordinate watermark text is clearly legible and matches the reported incident/task location, proceed with positive validation.
+   - If the watermark text is completely missing, unreadable, or displays coordinates differing significantly from the incident/task location, set visualMatch: false, reduce confidenceScore strictly below 0.50 (< 0.50), and explicitly state the missing or mismatched watermark in "auditNotes".
+5. Anti-Fraud & Physical Integrity: Strictly reject photos taken of other digital screens/monitors (spoofing / moiré pattern / screen bezels) and AI-generated or manipulated images with visualMatch: false, isResolved: false, and explicit notes in "auditNotes".
+6. Provide float confidence scores (0.0 to 1.0) for verificationConfidence and overall confidenceScore.
 
 ${jsonOnly}
 ${bahasaIndonesiaRule}
