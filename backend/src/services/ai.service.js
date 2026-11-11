@@ -46,12 +46,34 @@ class AiServiceResponseError extends Error {
 }
 
 /**
+ * @typedef {Object} CircuitBreakerOptions
+ * @property {number} [timeoutMs=35000] - Request execution timeout in milliseconds.
+ * @property {number} [failureThreshold=3] - Number of consecutive infrastructure failures required to trip the circuit.
+ * @property {number} [cooldownMs=30000] - Duration in milliseconds the circuit remains OPEN before probing recovery.
+ */
+
+/**
+ * @typedef {Object} AiServiceExecutionResult
+ * @property {Object} data - Raw or parsed data returned by the AI endpoint.
+ * @property {number} executionTimeMs - Measured round-trip execution latency in milliseconds.
+ * @property {string} usedProvider - AI microservice base URL.
+ */
+
+/**
  * Integrates the backend with the AUMS AI service and manages request failures.
+ *
+ * @description
+ * Implements a resilient HTTP client layer communicating with the AI microservice (`Port: 3001`).
+ * Embeds an automated Circuit Breaker pattern with failure thresholds, exponential timeouts,
+ * constant-time internal service authentication headers (`x-internal-api-key`), and
+ * graceful degradation error mapping (502 for bad model outputs, 503 for service outages, 504 for timeouts).
  */
 class AiIntegrationService {
   /**
-   * @param {import("axios").AxiosInstance} [httpClient=axios] HTTP client used for AI requests.
-   * @param {object} [options={}] Circuit-breaker and timeout configuration.
+   * Initializes AiIntegrationService with HTTP client and circuit-breaker configuration.
+   *
+   * @param {import("axios").AxiosInstance} [httpClient=axios] - HTTP client used for AI requests.
+   * @param {CircuitBreakerOptions} [options={}] - Circuit-breaker and timeout configuration overrides.
    */
   constructor(httpClient = axios, options = {}) {
     this.httpClient = httpClient;
@@ -67,9 +89,17 @@ class AiIntegrationService {
   /**
    * Sends a payload to the AI service with timeout and circuit-breaker handling.
    *
-   * @param {string} endpoint AI endpoint path.
-   * @param {object} payload AI request payload.
-   * @returns {Promise<object>} AI response with execution metadata.
+   * @description
+   * Dispatches an HTTP POST request to the specified AI endpoint.
+   * Verifies circuit-breaker state before sending. Injects `x-internal-api-key` header.
+   * Monitors response statuses, records infrastructure failures, and trips circuit when threshold is met.
+   *
+   * @param {string} endpoint - AI endpoint path (e.g., 'validate', 'plan', 'verify', 'embed').
+   * @param {Object} payload - AI request body data payload.
+   * @returns {Promise<AiServiceExecutionResult>} AI response along with latency and provider metadata.
+   * @throws {AiServiceUnavailableError} Throws 503 if circuit breaker is OPEN or connection refused.
+   * @throws {AiServiceTimeoutError} Throws 504 if request exceeds timeout limit.
+   * @throws {AiServiceResponseError} Throws 502 if AI processing failed or returned malformed structure.
    */
   async request(endpoint, payload) {
     if (this.isCircuitOpen()) {
@@ -272,9 +302,15 @@ class AiIntegrationService {
   }
 
   /**
-   * Checks the circuit-breaker state and allows a retry after the cooldown.
+   * Checks the circuit-breaker state and allows a retry after the cooldown period.
    *
-   * @returns {boolean} Whether the AI request should be rejected.
+   * @description
+   * Evaluates circuit status:
+   * - CLOSED: If circuitOpenedAt is null, returns false (allowing requests).
+   * - OPEN: If circuit is tripped and elapsed time < cooldownMs, returns true (rejecting requests).
+   * - HALF-OPEN: If cooldownMs has elapsed since tripping, resets state and allows a probe retry.
+   *
+   * @returns {boolean} True if the circuit breaker is OPEN and requests must be rejected.
    */
   isCircuitOpen() {
     if (!this.circuitOpenedAt) {
@@ -296,7 +332,11 @@ class AiIntegrationService {
   }
 
   /**
-   * Records an AI failure and opens the circuit after the threshold is reached.
+   * Records an infrastructure failure and trips the circuit when threshold is reached.
+   *
+   * @description
+   * Increments the failure counter. When failureCount >= failureThreshold (default 3),
+   * transitions the circuit breaker from CLOSED to OPEN and records the timestamp.
    *
    * @returns {void}
    */
@@ -317,6 +357,10 @@ class AiIntegrationService {
 
   /**
    * Resets failure counts and circuit state after a successful request.
+   *
+   * @description
+   * Called upon successful response from AI service. Clears failure counter and transitions
+   * circuit back to CLOSED state.
    *
    * @returns {void}
    */
@@ -434,6 +478,34 @@ class AiIntegrationService {
    */
   runVerificationAgent(report, proof) {
     return this.verify(report, proof);
+  }
+
+  /**
+   * Generates a 768-dimensional vector embedding for text using the AI service.
+   *
+   * @param {string} text - Text to embed.
+   * @returns {Promise<Array<number>|null>} 768-dimensional float embedding array or null.
+   */
+  async embed(text) {
+    if (!text || typeof text !== "string" || !text.trim()) {
+      return null;
+    }
+    const response = await this.request("embed", { text: text.trim() });
+    const embedding =
+      response?.data?.embedding ||
+      response?.data?.data?.embedding ||
+      response?.embedding;
+    return Array.isArray(embedding) ? embedding : null;
+  }
+
+  /**
+   * Alias for generating text embeddings.
+   *
+   * @param {string} text - Text to embed.
+   * @returns {Promise<Array<number>|null>}
+   */
+  async generateEmbedding(text) {
+    return this.embed(text);
   }
 }
 

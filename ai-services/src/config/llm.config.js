@@ -27,7 +27,7 @@ const gemini = process.env.GEMINI_API_KEY
   : null;
 
 /**
- * LLM and microservice configuration for AUMS AI Services.
+ * LLM and microservice configuration for AUMS AI Services (100% Google Gemini).
  * @module config/llm
  */
 module.exports = {
@@ -35,7 +35,5 @@ module.exports = {
   port,
   geminiModel: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
   geminiFallbackModel: process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash",
-  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
-  ollamaModel: process.env.OLLAMA_MODEL || "qwen2.5:3b",
   llmTimeoutMs: Number(process.env.LLM_TIMEOUT_MS || 30000),
 };

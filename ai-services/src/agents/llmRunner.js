@@ -10,14 +10,32 @@ const MAX_OUTPUT_TOKENS = 1000;
 const MAX_GEMINI_RETRIES = 3;
 
 /**
- * Executes configured AI providers in deterministic priority order with automated fallback.
+ * @typedef {Object} LlmRunnerOutput
+ * @property {boolean} success - Whether a model successfully returned a validated response.
+ * @property {Object} data - Structured data parsed from model output or safe default.
+ * @property {boolean} fallbackUsed - True if secondary tier or safe default was invoked.
+ * @property {string} usedProvider - Identifier of the provider/model that resolved the request.
+ * @property {number} executionTimeMs - Total execution elapsed duration in milliseconds.
+ */
+
+/**
+ * Executes configured AI tiers in deterministic priority order with automated fallback.
+ *
+ * @description
+ * Multi-Tier Cascade Runner & Context Guardrails:
+ * 1. Prompt Isolation: Wraps untrusted user input within XML tags `<user_data>${JSON.stringify(input)}</user_data>`.
+ * 2. Tier 1 (Gemini Primary): Dispatches request to `gemini-3.5-flash-lite` with schema-constrained JSON output.
+ * 3. Tier 2 (Gemini Fallback): If Tier 1 encounters rate limits (429), outages (503), timeouts, or malformed JSON,
+ *    switches to `gemini-2.5-flash` with exponential backoff and jitter.
+ * 4. Tier 3 (Safe Default): If all Google Gemini endpoints are unreachable or exhausted, returns pre-configured
+ *    safe default values without throwing uncaught exceptions, providing a 100% zero-crash guarantee.
  *
  * @param {string} systemPrompt - System prompt instructions for the language model.
- * @param {*} input - Untrusted user input data to process.
+ * @param {*} input - Untrusted user input data to process within `<user_data>` context wrapper.
  * @param {Object} schema - Expected JSON schema definition for response validation.
  * @param {Object} defaultValues - Fallback default values returned if all providers fail.
  * @param {Array<Object>} [images=[]] - Optional image references for multimodal reasoning.
- * @returns {Promise<{success: boolean, data: Object, fallbackUsed: boolean, usedProvider: string, executionTimeMs: number}>}
+ * @returns {Promise<LlmRunnerOutput>} Execution result with data, fallback metadata, and latency.
  */
 async function runStructuredLlm(
   systemPrompt,
@@ -48,7 +66,7 @@ async function runStructuredLlm(
 
   let fallbackUsed = false;
   for (const provider of providers) {
-    if (provider.name.startsWith("Gemini") && !gemini) {
+    if (!gemini) {
       console.warn(
         `[aums-ai-services] ${provider.name} API key missing; skipping ${provider.label}.`,
       );

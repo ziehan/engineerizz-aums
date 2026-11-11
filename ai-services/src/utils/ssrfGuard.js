@@ -10,8 +10,18 @@ const PRIVATE_HOSTNAMES = new Set([
 /**
  * Checks whether an IPv4 address belongs to a private, loopback, or link-local range.
  *
- * @param {string} address - IPv4 address string.
- * @returns {boolean} True if address is in a private network range.
+ * @description
+ * Evaluates decimal octets against protected network ranges:
+ * - 10.0.0.0/8 (RFC 1918 Private)
+ * - 172.16.0.0/12 (RFC 1918 Private)
+ * - 192.168.0.0/16 (RFC 1918 Private)
+ * - 127.0.0.0/8 (Loopback)
+ * - 169.254.0.0/16 (Link-local / Cloud Instance Metadata Services)
+ * - 100.64.0.0/10 (Carrier-Grade NAT)
+ * - 0.0.0.0/8 (Current network)
+ *
+ * @param {string} address - IPv4 address string (e.g. "127.0.0.1", "192.168.1.1").
+ * @returns {boolean} True if address is in a private or link-local network range.
  */
 function isPrivateIpv4(address) {
   const octets = address.split(".").map(Number);

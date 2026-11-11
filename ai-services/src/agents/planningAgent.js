@@ -1,5 +1,4 @@
-const { chat, validateResponse } = require("../adapters/ollamaAdapter");
-const { generateJson } = require("../adapters/geminiAdapter");
+const { generateJson, validateResponse } = require("../adapters/geminiAdapter");
 const { planning, bahasaIndonesiaRule } = require("../prompts/systemPrompts");
 
 /**
@@ -54,11 +53,26 @@ const responseSchema = {
 };
 
 /**
+ * @typedef {Object} PlanningAgentOutput
+ * @property {string} targetAgency - One of 5 SKPD DKI Jakarta (e.g. "Dinas Bina Marga", "Dinas Sumber Daya Air").
+ * @property {number} agencyConfidence - Model confidence score between 0.0 and 1.0 for agency routing.
+ * @property {number} planConfidence - Model confidence score between 0.0 and 1.0 for action steps.
+ * @property {number} confidenceScore - Overall normalized planning confidence between 0.0 and 1.0.
+ * @property {number} estimatedDays - Estimated resolution timeline in integer days.
+ * @property {Array<string>} actionSteps - Exactly 3 to 5 operational field action steps in Bahasa Indonesia.
+ * @property {string} dispatchReason - Administrative dispatch justification in Bahasa Indonesia.
+ */
+
+/**
  * Validates operational planning result against schema and ensures 3 to 5 action steps.
  *
+ * @description
+ * Enforces schema constraints and ensures the array of operational field steps
+ * contains between 3 and 5 items.
+ *
  * @param {Object} result - Raw planning model response.
- * @returns {Object} Validated and normalized planning response.
- * @throws {Error} If action steps count is outside 3-5 range.
+ * @returns {PlanningAgentOutput} Validated and normalized planning response.
+ * @throws {Error} If actionSteps count is less than 3 or greater than 5.
  */
 function validatePlanningResponse(result) {
   const validated = validateResponse(result, responseSchema);
@@ -69,12 +83,18 @@ function validatePlanningResponse(result) {
 }
 
 /**
- * Plans field maintenance operations and assigns responsible government agencies.
- * Uses Ollama primarily with automated failover to Gemini.
+ * Plans field maintenance operations and assigns responsible government agencies via Gemini.
+ *
+ * @description
+ * Planning & Dispatch Agent for AUMS:
+ * 1. Analyzes validated report details and provided RAG context (historical resolved incidents within 100m).
+ * 2. Assigns target SKPD agency from 5 recognized DKI municipal departments.
+ * 3. Synthesizes 3 to 5 chronological field action steps.
+ * 4. Estimates required repair days and records administrative dispatch justification.
  *
  * @param {Object} reportData - Validated incident report details.
- * @param {Array<Object>} [ragContext=[]] - Historical or nearby resolved incident context.
- * @returns {Promise<Object>} Validated operational dispatch plan.
+ * @param {Array<Object>} [ragContext=[]] - Historical or nearby resolved incident context from pgvector/PostGIS.
+ * @returns {Promise<PlanningAgentOutput>} Validated operational dispatch plan.
  * @throws {TypeError} If reportData is not a valid object.
  */
 async function runPlanningAgent(reportData, ragContext = []) {
@@ -88,38 +108,16 @@ async function runPlanningAgent(reportData, ragContext = []) {
   const context = Array.isArray(ragContext) ? ragContext : [ragContext];
   const input = { report: reportData, ragContext: context };
   try {
-    try {
-      const result = await chat(
-        [
-          {
-            role: "system",
-            content: `${planning}\n${bahasaIndonesiaRule}`,
-          },
-          {
-            role: "user",
-            content: `<user_data>\n${JSON.stringify(input)}\n</user_data>`,
-          },
-        ],
-        {
-          model: process.env.OLLAMA_MODEL || "qwen2.5:3b",
-        },
-      );
-      return validatePlanningResponse(result);
-    } catch (ollamaError) {
-      console.warn(
-        "[aums-ai-services] Ollama planning failed; falling back to Gemini:",
-        ollamaError.message,
-      );
-      const geminiResult = await generateJson(
-        `${planning}\n${bahasaIndonesiaRule}`,
-        input,
-        {
-          model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
-          responseSchema,
-        },
-      );
-      return validatePlanningResponse(geminiResult);
-    }
+    const geminiResult = await generateJson(
+      `${planning}\n${bahasaIndonesiaRule}`,
+      input,
+      {
+        model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+        fallbackModel: process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash",
+        responseSchema,
+      },
+    );
+    return validatePlanningResponse(geminiResult);
   } catch (error) {
     console.error("[aums-ai-services] Planning agent failed:", error);
     throw error;

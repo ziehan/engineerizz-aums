@@ -1,6 +1,7 @@
 const { runIntakeAgent } = require("../agents/intakeAgent");
 const { runPlanningAgent } = require("../agents/planningAgent");
 const { runVerificationAgent } = require("../agents/verificationAgent");
+const { generateEmbedding } = require("../adapters/geminiAdapter");
 
 /**
  * Identifies required payload attributes that are missing, null, or empty strings.
@@ -61,9 +62,15 @@ function controllerFailure(res, error, agentName) {
 /**
  * Handles incoming citizen report validation, deduplication, and triage analysis.
  *
+ * @description
+ * Handles POST /api/v1/ai/validate (and /intake) endpoint.
+ * Validates mandatory fields: title, description, category, locationAddress, latitude, longitude, existingReports.
+ * Executes IntakeAgent to verify physical defect genuineness, estimate priorityScore (1-100),
+ * and detect visual/spatial duplications (< 100m).
+ *
  * @param {import("express").Request} req - Express request with intake payload.
  * @param {import("express").Response} res - Express response object.
- * @returns {Promise<import("express").Response>} Intake processing outcome.
+ * @returns {Promise<import("express").Response>} Sends HTTP 200 JSON with intake assessment or safe fallback.
  */
 async function validate(req, res) {
   const missing = missingFields(req.body, [
@@ -86,9 +93,15 @@ async function validate(req, res) {
 /**
  * Handles operational planning, agency assignment, and repair SLA estimation.
  *
- * @param {import("express").Request} req - Express request with planning payload.
+ * @description
+ * Handles POST /api/v1/ai/plan (and /planning) endpoint.
+ * Validates mandatory fields: reportId, title, description, category, locationAddress, duplicateCount.
+ * Executes PlanningAgent incorporating historical RAG context to determine responsible SKPD agency,
+ * produce 3-5 operational field steps, and estimate resolution days.
+ *
+ * @param {import("express").Request} req - Express request with planning payload and RAG context.
  * @param {import("express").Response} res - Express response object.
- * @returns {Promise<import("express").Response>} Planning assessment outcome.
+ * @returns {Promise<import("express").Response>} Sends HTTP 200 JSON with planning assessment or safe fallback.
  */
 async function plan(req, res) {
   const missing = missingFields(req.body, [
@@ -112,9 +125,16 @@ async function plan(req, res) {
 /**
  * Handles field repair visual verification and anti-fraud inspection.
  *
- * @param {import("express").Request} req - Express request with verification payload.
+ * @description
+ * Handles POST /api/v1/ai/verify (and /verification) endpoint.
+ * Validates mandatory fields: beforePhotoUrl, afterPhotoUrl, reportDescription.
+ * Executes VerificationAgent comparing Before and After photos, verifying permanent landmark matching,
+ * checking for the presence of the HTML5 Canvas coordinate watermark on the After photo,
+ * and rejecting digital screen spoofing (moiré patterns/bezels) or recycled images.
+ *
+ * @param {import("express").Request} req - Express request with before and after photo references.
  * @param {import("express").Response} res - Express response object.
- * @returns {Promise<import("express").Response>} Verification audit outcome.
+ * @returns {Promise<import("express").Response>} Sends HTTP 200 JSON with verification audit result or safe fallback.
  */
 async function verify(req, res) {
   const missing = missingFields(req.body, [
@@ -130,4 +150,32 @@ async function verify(req, res) {
   }
 }
 
-module.exports = { validate, plan, verify };
+/**
+ * Handles vector embedding generation using Gemini text-embedding-004 (768 dimensions).
+ *
+ * @description
+ * Handles POST /api/v1/ai/embed (and /embedding) endpoint.
+ * Validates non-empty text input and calls generateEmbedding to produce a 768-dimensional float vector.
+ *
+ * @param {import("express").Request} req - Express request with text payload (`text`, `content`, or `input`).
+ * @param {import("express").Response} res - Express response object.
+ * @returns {Promise<import("express").Response>} Sends HTTP 200 JSON with embedding vector and dimensionality.
+ */
+async function embed(req, res) {
+  const text = req.body?.text || req.body?.content || req.body?.input;
+  if (!text || typeof text !== "string" || !text.trim()) {
+    return validationResponse(res, ["text"]);
+  }
+  try {
+    const embedding = await generateEmbedding(text.trim());
+    return res.status(200).json({
+      success: true,
+      embedding,
+      dimensions: embedding.length,
+    });
+  } catch (error) {
+    return controllerFailure(res, error, "Embedding");
+  }
+}
+
+module.exports = { validate, plan, verify, embed };

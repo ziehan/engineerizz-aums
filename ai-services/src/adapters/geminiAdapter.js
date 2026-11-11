@@ -1,8 +1,9 @@
 const { GoogleGenAI } = require("@google/genai");
-const { validateResponse } = require("./ollamaAdapter");
 const { assertSafeExternalUrl } = require("../utils/ssrfGuard");
 
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_EMBEDDING_MODEL = "text-embedding-004";
+const DEFAULT_EMBEDDING_DIMENSIONS = 768;
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_OUTPUT_TOKENS = 1000;
 const MAX_RETRIES = 3;
@@ -186,10 +187,23 @@ function imagePart(image, defaultMimeType = "image/jpeg") {
 /**
  * Sends a multimodal prompt to Gemini and validates the structured JSON response.
  *
+ * @description
+ * Calls Google GenAI SDK to generate structured JSON responses from Gemini models:
+ * 1. Resolves primary model (`gemini-3.5-flash-lite`) and fallback model (`gemini-2.5-flash`).
+ * 2. Wraps untrusted user text within `<user_data>` XML fences to prevent prompt injection.
+ * 3. Normalizes image references (Base64 data URIs, local buffers, or safe external URLs) into Gemini image parts.
+ * 4. Configures responseMimeType: "application/json", temperature: 0, and responseSchema.
+ * 5. Executes requests with automatic retry on 429/503 errors and failover across configured models.
+ *
  * @param {string} systemPrompt - System prompt instructions.
  * @param {Object|string} input - User input data.
  * @param {Object} [options={}] - Execution options including schema, models, and images.
+ * @param {string} [options.model="gemini-3.5-flash-lite"] - Primary Gemini model name.
+ * @param {string} [options.fallbackModel="gemini-2.5-flash"] - Fallback Gemini model name.
+ * @param {Object} [options.responseSchema] - Target JSON schema for model output constraint.
+ * @param {Array<string|Object>} [options.images] - Attached image references.
  * @returns {Promise<Object>} Validated structured JSON response.
+ * @throws {Error} Throws if all configured Gemini models fail.
  */
 async function generateJson(systemPrompt, input, options = {}) {
   const primaryModel =
@@ -366,10 +380,116 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+/**
+ * Validates and normalizes structured model responses against schema constraints.
+ *
+ * @param {Object} data - Parsed model response object.
+ * @param {Object} schema - Expected response schema.
+ * @returns {Object} Normalized and validated response object.
+ * @throws {Error} If missing required fields or encountering invalid types.
+ */
+function validateResponse(data, schema) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("response must be a JSON object");
+  }
+  const normalizedData = { ...data };
+  for (const field of schema.required || []) {
+    if (!(field in normalizedData)) {
+      throw new Error(`missing required field: ${field}`);
+    }
+  }
+  for (const [field, definition] of Object.entries(schema.properties || {})) {
+    if (!(field in normalizedData)) continue;
+    const rawValue = normalizedData[field];
+    const value =
+      definition.normalizePercentage &&
+      typeof rawValue === "number" &&
+      rawValue > 1 &&
+      rawValue <= 100
+        ? rawValue / 100
+        : rawValue;
+    if (value !== rawValue) normalizedData[field] = value;
+    if (value === null && definition.nullable) continue;
+    const valid =
+      (definition.type === "BOOLEAN" && typeof value === "boolean") ||
+      ((definition.type === "NUMBER" || definition.type === "INTEGER") &&
+        typeof value === "number" &&
+        Number.isFinite(value)) ||
+      (definition.type === "STRING" && typeof value === "string") ||
+      (definition.type === "ARRAY" &&
+        Array.isArray(value) &&
+        value.every((item) => typeof item === "string"));
+    if (!valid || (definition.enum && !definition.enum.includes(value))) {
+      throw new Error(`invalid field: ${field}`);
+    }
+    if (
+      typeof value === "number" &&
+      ((definition.minimum !== undefined && value < definition.minimum) ||
+        (definition.maximum !== undefined && value > definition.maximum))
+    ) {
+      throw new Error(`out-of-range field: ${field}`);
+    }
+    if (definition.type === "INTEGER" && !Number.isInteger(value)) {
+      throw new Error(`field must be an integer: ${field}`);
+    }
+  }
+  return normalizedData;
+}
+
+/**
+ * Generates vector embeddings for a text string using Gemini text-embedding-004.
+ *
+ * @description
+ * Calls official Google GenAI model `text-embedding-004` to generate semantic vector representations
+ * normalized to 768 dimensions (`outputDimensionality: 768`). The generated float array is used by
+ * the Backend Core to persist in PostgreSQL pgvector (`vector(768)`) and power spatial-semantic RAG queries.
+ *
+ * @param {string} text - Input text content to embed (title, description, category).
+ * @param {Object} [options={}] - Embedding configuration options.
+ * @param {string} [options.model="text-embedding-004"] - Embedding model name.
+ * @param {number} [options.dimensions=768] - Target dimensionality (768 dimensions standard).
+ * @returns {Promise<Array<number>>} 768-dimensional float embedding vector.
+ * @throws {Error} Throws if text is empty or Gemini fails to produce a non-empty vector.
+ */
+async function generateEmbedding(text, options = {}) {
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("Text must be a non-empty string for embedding");
+  }
+
+  const model =
+    options.model ||
+    process.env.GEMINI_EMBEDDING_MODEL ||
+    DEFAULT_EMBEDDING_MODEL;
+  const outputDimensionality =
+    options.dimensions || DEFAULT_EMBEDDING_DIMENSIONS;
+
+  const client = getClient();
+  const response = await client.models.embedContent({
+    model,
+    contents: text.trim(),
+    config: {
+      outputDimensionality,
+    },
+  });
+
+  const values =
+    response?.embedding?.values ||
+    response?.embeddings?.[0]?.values ||
+    response?.values;
+
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error("Gemini returned invalid or empty embedding vector");
+  }
+
+  return values;
+}
+
 module.exports = {
   cleanBase64: sanitizeBase64,
+  generateEmbedding,
   generateJson,
   imagePart,
   parseJsonResponse,
   sanitizeBase64,
+  validateResponse,
 };

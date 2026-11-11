@@ -6,94 +6,11 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(CITIZEN)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  reports   Report[]
-}
-
 enum UserRole {
   CITIZEN
   FIELD_OFFICER
+  CRM_OFFICER
   ADMIN
-}
-
-model Report {
-  id                  String                    @id @default(uuid()) @db.Uuid
-  title               String
-  description         String
-  category            String
-  status              ReportStatus              @default(Pending)
-  priority            Priority                  @default(Medium)
-  locationAddress     String
-  latitude            Float
-  longitude           Float
-  photoUrl            String?
-  parentReportId      String?                   @db.Uuid
-  isDuplicate         Boolean                   @default(false)
-  duplicateCount      Int                       @default(0)
-  aiProcessed         Boolean                   @default(false)
-  requiresHumanReview Boolean                   @default(false)
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
-  reporterId          String?                   @db.Uuid
-  embedding           Unsupported("vector")?
-  location            Unsupported("geography")?
-  actionPlan          ActionPlan?
-  auditLogs           AuditLog[]
-  parentReport        Report?                   @relation("ReportDuplicates", fields: [parentReportId], references: [id], onDelete: Cascade)
-  duplicates          Report[]                  @relation("ReportDuplicates")
-  reporter            User?                     @relation(fields: [reporterId], references: [id])
-
-  @@index([status])
-  @@index([category])
-  @@index([priority])
-  @@index([parentReportId])
-}
-
-model ActionPlan {
-  id                 String    @id @default(uuid()) @db.Uuid
-  reportId           String    @unique @db.Uuid
-  targetAgency       String
-  confidenceScore    Float
-  estimatedDays      Int
-  actionSteps        Json
-  confidenceMetadata Json?
-  approvedBy         String?
-  approvedAt         DateTime?
-  createdAt          DateTime  @default(now())
-  report             Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
-}
-
-model AuditLog {
-  id              String   @id @default(uuid()) @db.Uuid
-  reportId        String   @db.Uuid
-  action          String
-  details         String
-  agentName       String?
-  payload         Json?
-  response        Json?
-  confidenceScore Float?
-  timestamp       DateTime @default(now())
-  createdAt       DateTime @default(now())
-  report          Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
-
-  @@index([reportId])
-  @@index([agentName])
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model spatial_ref_sys {
-  srid      Int     @id
-  auth_name String? @db.VarChar(256)
-  auth_srid Int?
-  srtext    String? @db.VarChar(2048)
-  proj4text String? @db.VarChar(2048)
 }
 
 enum ReportStatus {
@@ -109,4 +26,116 @@ enum Priority {
   Low
   Medium
   High
+}
+
+model User {
+  id              String       @id @default(uuid()) @db.Uuid
+  email           String       @unique
+  password        String
+  name            String
+  role            UserRole     @default(CITIZEN)
+  departmentId    String?      @db.Uuid
+  nip             String?      @unique
+  unit            String?
+  phone           String?
+  nik             String?
+  isAvailable     Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  reports         Report[]
+  assignedReports Report[]     @relation("AssignedReports")
+  department      Department?  @relation(fields: [departmentId], references: [id])
+
+  @@index([departmentId])
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+  reports   Report[]
+}
+
+model Report {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  title               String
+  description         String
+  category            String
+  status              ReportStatus              @default(Pending)
+  priority            Priority                  @default(Medium)
+  locationAddress     String
+  latitude            Float
+  longitude           Float
+  photoUrl            String?                   // URL foto atau string JSON array foto
+  officerPhotoUrl     String?                   // Foto bukti perbaikan lapangan
+  officerNotes        String?                   // Catatan penyelesaian petugas
+  assignedOfficerName String?                   // Nama petugas PIC
+  resolvedAt          DateTime?                 // Timestamp penyelesaian laporan
+  parentReportId      String?                   @db.Uuid
+  isDuplicate         Boolean                   @default(false)
+  duplicateCount      Int                       @default(0)
+  aiProcessed         Boolean                   @default(false)
+  requiresHumanReview Boolean                   @default(false)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  reporterId          String?                   @db.Uuid
+  departmentId        String?                   @db.Uuid
+  assignedToId        String?                   @db.Uuid
+  embedding           Unsupported("vector")?    // Kolom pgvector vector(768)
+  location            Unsupported("geography")? // Kolom PostGIS geography(Point, 4326)
+  actionPlan          ActionPlan?
+  auditLogs           AuditLog[]
+  parentReport        Report?                   @relation("ReportDuplicates", fields: [parentReportId], references: [id], onDelete: Cascade)
+  duplicates          Report[]                  @relation("ReportDuplicates")
+  reporter            User?                     @relation(fields: [reporterId], references: [id])
+  department          Department?               @relation(fields: [departmentId], references: [id])
+  assignedTo          User?                     @relation("AssignedReports", fields: [assignedToId], references: [id])
+
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([parentReportId])
+  @@index([departmentId])
+  @@index([assignedToId])
+}
+
+model ActionPlan {
+  id                 String    @id @default(uuid()) @db.Uuid
+  reportId           String    @unique @db.Uuid
+  targetAgency       String
+  confidenceScore    Float
+  estimatedDays      Int
+  actionSteps        Json      // Array string langkah operasional lapangan
+  confidenceMetadata Json?     // Metadata confidence breakdown, estimasi biaya, alat
+  approvedBy         String?
+  approvedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  report             Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  reportId        String   @db.Uuid
+  action          String   // e.g. AI_INTAKE_COMPLETED, CRM_APPROVED, FIELD_VERIFIED
+  details         String
+  agentName       String?  // INTAKE_AGENT | PLANNING_AGENT | VERIFICATION_AGENT
+  payload         Json?    // Payload masukan yang dikirim ke AI
+  response        Json?    // Hasil respons mentah dari model AI
+  confidenceScore Float?
+  timestamp       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  report          Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([agentName])
+}
+
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
 }

@@ -1,5 +1,25 @@
 const express = require("express");
 
+/**
+ * Express router factory configuring AUMS citizen complaint, intake, planning, and verification routes.
+ *
+ * @description
+ * Sets up rate limiters, Multer image upload middlewares, Sharp compression, Zod payload validators,
+ * and role-based guards across public intake and authenticated officer/admin endpoints.
+ *
+ * @param {import("../controllers/report.controller")} controller - ReportController instance.
+ * @param {Function} validatePayload - Zod middleware validating report payloads.
+ * @param {import("../controllers/report.controller")} [pipelineController] - Optional pipeline controller instance.
+ * @param {Object} imageMiddleware - Multer and Sharp image processing middleware bundle.
+ * @param {Function} [validateVerificationPayload] - Zod middleware validating verification coordinates.
+ * @param {Function} [authMiddleware] - JWT authentication middleware.
+ * @param {Function} [citizenOrAdmin] - Guard allowing CITIZEN, FIELD_OFFICER, CRM_OFFICER, ADMIN.
+ * @param {Function} [officerOrAdmin] - Guard allowing FIELD_OFFICER, CRM_OFFICER, ADMIN.
+ * @param {Function} [adminOnly] - Guard allowing ADMIN only.
+ * @param {Function} [publicLimiter] - Rate limiter for public endpoints.
+ * @param {Function} [protectedLimiter] - Rate limiter for protected endpoints.
+ * @returns {import("express").Router} Configured Express router.
+ */
 module.exports = (
   controller,
   validatePayload,
@@ -36,16 +56,6 @@ module.exports = (
       authMiddleware,
       officerOrAdmin,
       pipelineController.plan,
-    );
-    router.post(
-      "/verify/:id",
-      protectedLimiter,
-      authMiddleware,
-      officerOrAdmin,
-      imageMiddleware.uploadImage,
-      imageMiddleware.processImage,
-      validateVerificationPayload,
-      pipelineController.verify,
     );
     router.post(
       "/verify",
@@ -99,6 +109,9 @@ module.exports = (
     protectedLimiter,
     authMiddleware,
     officerOrAdmin,
+    imageMiddleware.uploadImage,
+    imageMiddleware.processImage,
+    validateVerificationPayload,
     controller.verify,
   );
   return router;
