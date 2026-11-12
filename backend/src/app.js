@@ -20,7 +20,11 @@ const errorMiddleware = require("./middlewares/error.middleware");
 const RagService = require("./services/rag.service");
 const imageMiddleware = require("./middlewares/image.middleware");
 const prisma = require("./config/prisma.config");
-const { authenticate, requireRoles } = require("./middlewares/auth.middleware");
+const {
+  authenticate,
+  optionalAuthenticate,
+  requireRoles,
+} = require("./middlewares/auth.middleware");
 const AuthController = require("./controllers/auth.controller");
 const authRoutes = require("./routes/auth.routes");
 const repository = new ReportRepository();
@@ -119,6 +123,7 @@ app.use(
     requireRoles("CRM_OFFICER", "ADMIN"),
     publicLimiter,
     protectedLimiter,
+    optionalAuthenticate,
   ),
 );
 app.use(
@@ -135,6 +140,7 @@ app.use(
     requireRoles("CRM_OFFICER", "ADMIN"),
     publicLimiter,
     protectedLimiter,
+    optionalAuthenticate,
   ),
 );
 app.use("/api/v1/maps", mapsRoutes(new MapsController(mapsService)));

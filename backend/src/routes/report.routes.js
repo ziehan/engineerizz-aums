@@ -18,6 +18,7 @@ const express = require("express");
  * @param {Function} [adminOnly] - Guard allowing ADMIN only.
  * @param {Function} [publicLimiter] - Rate limiter for public endpoints.
  * @param {Function} [protectedLimiter] - Rate limiter for protected endpoints.
+ * @param {Function} [optionalAuthMiddleware] - Optional JWT authentication middleware for attaching user context.
  * @returns {import("express").Router} Configured Express router.
  */
 module.exports = (
@@ -32,12 +33,14 @@ module.exports = (
   adminOnly = authMiddleware,
   publicLimiter = (_req, _res, next) => next(),
   protectedLimiter = (_req, _res, next) => next(),
+  optionalAuthMiddleware = (_req, _res, next) => next(),
 ) => {
   const router = express.Router();
   if (pipelineController) {
     router.post(
       "/intake",
       publicLimiter,
+      optionalAuthMiddleware,
       imageMiddleware.uploadImage,
       imageMiddleware.processImage,
       validatePayload,
@@ -68,7 +71,14 @@ module.exports = (
       pipelineController.verify,
     );
   }
-  router.post("/", publicLimiter, validatePayload, controller.create);
+  router.post(
+    "/",
+    publicLimiter,
+    optionalAuthMiddleware,
+    validatePayload,
+    controller.create,
+  );
+  router.get("/me", protectedLimiter, authMiddleware, controller.getMyReports);
   router.get(
     "/",
     protectedLimiter,

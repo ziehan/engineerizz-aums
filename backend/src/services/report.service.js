@@ -326,20 +326,49 @@ class ReportService {
       resolvedAt: report.resolvedAt || null,
       isDuplicate: report.isDuplicate ?? false,
       duplicateCount: report.duplicateCount ?? 0,
+      reporterId: report.reporterId || null,
       createdAt: report.createdAt,
       updatedAt: report.updatedAt,
     };
   }
 
   /**
-   * Retrieves reports using status, category, and priority filters with role-based masking.
+   * Retrieves reports using status, category, priority, and reporter filters with role-based masking.
    *
    * @param {object} query Report filter parameters.
    * @param {string} [userRole="CITIZEN"] Requesting user role.
+   * @param {string|null} [userId=null] Authenticated user ID.
    * @returns {Promise<Array<object>>} Matching masked reports.
    */
-  async listReports(query = {}, userRole = "CITIZEN") {
+  async listReports(query = {}, userRole = "CITIZEN", userId = null) {
     const filters = {};
+    if (query.status) filters.status = query.status;
+    if (query.category) filters.category = query.category;
+    if (query.priority) filters.priority = query.priority;
+    if (query.reporterId) {
+      filters.reporterId = query.reporterId;
+    } else if (
+      (query.myReports === "true" || query.myReports === true) &&
+      userId
+    ) {
+      filters.reporterId = userId;
+    }
+    const reports = await this.repository.findMany(filters);
+    return Array.isArray(reports)
+      ? reports.map((r) => this.maskReport(r, userRole))
+      : [];
+  }
+
+  /**
+   * Retrieves reports submitted specifically by an individual citizen.
+   *
+   * @param {string} userId - UUID of the citizen user.
+   * @param {object} [query={}] - Optional query filters (status, category, priority).
+   * @param {string} [userRole="CITIZEN"] - Requesting user role.
+   * @returns {Promise<Array<object>>} Masked list of citizen's own reports.
+   */
+  async listMyReports(userId, query = {}, userRole = "CITIZEN") {
+    const filters = { reporterId: userId };
     if (query.status) filters.status = query.status;
     if (query.category) filters.category = query.category;
     if (query.priority) filters.priority = query.priority;

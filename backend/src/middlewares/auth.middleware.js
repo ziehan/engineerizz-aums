@@ -89,6 +89,46 @@ function authenticate(req, res, next) {
 }
 
 /**
+ * Middleware optionally verifying Bearer JWT tokens in Authorization headers.
+ *
+ * @description
+ * If a valid Bearer token is provided, populates `req.user` and `req.token`.
+ * If header is omitted, malformed, or token is invalid, execution continues without error.
+ *
+ * @param {import("express").Request} req - Express request object.
+ * @param {import("express").Response} _res - Express response object.
+ * @param {import("express").NextFunction} next - Express next middleware function.
+ */
+function optionalAuthenticate(req, _res, next) {
+  const header = req.get("authorization");
+  const [scheme, token] = header ? header.split(" ") : [];
+  if (scheme !== "Bearer" || !token || isTokenRevoked(token)) {
+    return next();
+  }
+
+  try {
+    const payload = jwt.verify(token, env.jwtSecret);
+    if (payload && typeof payload === "object") {
+      const role = String(payload.role || "").toUpperCase();
+      if (roles.has(role)) {
+        req.token = token;
+        req.user = {
+          userId: payload.userId || payload.id,
+          id: payload.userId || payload.id,
+          email: payload.email,
+          role,
+          departmentId: payload.departmentId || null,
+          nip: payload.nip || null,
+        };
+      }
+    }
+  } catch (_ignored) {
+    // Optional auth silently ignores expired or invalid tokens
+  }
+  return next();
+}
+
+/**
  * Middleware factory restricting endpoint access to specific user roles.
  *
  * @param {...string} allowedRoles - User roles authorized to access the route.
@@ -109,6 +149,7 @@ function requireRoles(...allowedRoles) {
 
 module.exports = {
   authenticate,
+  optionalAuthenticate,
   requireRoles,
   revokeToken,
   isTokenRevoked,
