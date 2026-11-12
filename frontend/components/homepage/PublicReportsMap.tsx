@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-import useReportList from "@/hooks/useReportList";
 import type { MapPoint } from "./ReportsMapView";
+import type { ReportsData } from "./types";
 
 const ReportsMapView = dynamic(() => import("./ReportsMapView"), {
   ssr: false,
@@ -24,14 +24,18 @@ function hasValidCoords(lat: unknown, lng: unknown) {
   return Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180;
 }
 
-interface PublicReportsMapProps {
+interface PublicReportsMapProps extends ReportsData {
   title?: string;
   className?: string;
 }
 
-export function PublicReportsMap({ title = "Peta", className }: PublicReportsMapProps) {
-  const { reports, isLoading, error } = useReportList();
-
+export function PublicReportsMap({
+  reports,
+  isLoading,
+  error,
+  title = "Peta",
+  className,
+}: PublicReportsMapProps) {
   const points = useMemo<MapPoint[]>(
     () =>
       reports
