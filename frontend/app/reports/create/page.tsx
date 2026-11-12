@@ -1,0 +1,225 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Input } from "@/components/input"; 
+import { ButtonBlue } from "@/components/buttons/button-blue"; 
+import { getCoordinates } from "@/lib/getCoordinate";
+import { ButtonRed } from "@/components/buttons/button-red";
+
+export default function CreateReportPage() {
+    const router = useRouter();
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [category, setCategory] = useState("Jalan Rusak");
+    const [locationAddress, setLocationAddress] = useState("");
+    const [latitude, setLatitude] = useState<number | null>(null);
+    const [longitude, setLongitude] = useState<number | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    const [isLoadingGPS, setIsLoadingGPS] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    useEffect(() => {
+        handleFetchLocation();
+    }, []);
+
+    const handleFetchLocation = async () => {
+        setIsLoadingGPS(true);
+        setErrorMessage(null);
+        try {
+            const coords = await getCoordinates();
+            setLatitude(coords.latitude);
+            setLongitude(coords.longitude);
+
+            const res = await fetch(`http://localhost:5000/api/v1/maps/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
+            const json = await res.json();
+            if (json.success && json.data?.address) {
+                setLocationAddress(json.data.address);
+            }
+        } catch (err: any) {
+            setErrorMessage(err.message || "Gagal mendeteksi lokasi GPS.");
+        } finally {
+            setIsLoadingGPS(false);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const selectedFile = e.target.files[0];
+            if (!["image/jpeg", "image/png", "image/webp"].includes(selectedFile.type)) {
+                setErrorMessage("Format citra wajib: image/jpeg, image/png, atau image/webp.");
+                return;
+            }
+            if (selectedFile.size > 10 * 1024 * 1024) {
+                setErrorMessage("Ukuran berkas maksimal 10MB.");
+                return;
+            }
+            setErrorMessage(null);
+            setFile(selectedFile);
+            setPreviewUrl(URL.createObjectURL(selectedFile));
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title || !description || !file || latitude === null || longitude === null) {
+            setErrorMessage("Mohon lengkapi Judul, Detail, File Foto, dan pastikan GPS aktif.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        setErrorMessage(null);
+
+        try {
+            const formData = new FormData();
+            formData.append("title", title);
+            formData.append("description", description);
+            formData.append("category", category);
+            formData.append("latitude", latitude.toString());
+            formData.append("longitude", longitude.toString());
+            formData.append("locationAddress", locationAddress);
+            formData.append("image", file);
+
+            const token = localStorage.getItem("token");
+
+            const response = await fetch("http://localhost:5000/api/v1/reports/intake", {
+                method: "POST",
+                headers: {
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || "Gagal mengirim aduan.");
+            }
+
+            router.push("/dashboard"); 
+        } catch (err: any) {
+            setErrorMessage(err.message || "Terjadi kesalahan pada server.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="flex min-h-screen w-full flex-col bg-neutral-100 p-6 md:p-15 items-center">
+            <div className="mb-8 w-full max-w-4xl text-center">
+                <h2 className="font-bold text-neutral-1000">Ajukan Aduan Baru</h2>
+                <p className="text-[20px] text-neutral-800 mt-2">
+                    Anda tidak perlu khawatir, identitas pelapor dirahasiakan dan hanya bisa diakses oleh petugas yang berwenang.
+                </p>
+            </div>
+
+            {errorMessage && (
+                <div className="mb-6 w-full max-w-4xl rounded-lg bg-red-50 p-4 text-red-600 border border-red-200 text-sm">
+                    {errorMessage}
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                <div className="flex flex-col gap-5">
+                    <div className="relative border border-neutral-300 rounded-2xl overflow-hidden bg-neutral-200 h-[280px] flex items-center justify-center shadow-sm">
+                        <Image
+                            src="/map-indo.png"
+                            alt="Simulasi Peta Lokasi"
+                            fill
+                            className="object-cover opacity-80"
+                            sizes="(max-width: 768px) 100vw, 500px"
+                        />
+
+                        <div className="absolute bottom-3 z-10 bg-black/70 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-sm">
+                            {isLoadingGPS ? "Mendeteksi posisi GPS..." : latitude ? `GPS: ${latitude}, ${longitude}` : "GPS Belum Aktif"}
+                        </div>
+                    </div>
+
+                    <div className="text-center text-xs text-neutral-500 font-medium">atau</div>
+
+                    <div className="max-md:-mb-3">
+                        <Input
+                            type="text"
+                            name="locationAddress"
+                            value={locationAddress}
+                            onChange={(e: any) => setLocationAddress(e.target.value)}
+                            label="Alamat Lokasi (Opsional)"
+                        />
+                    </div>
+
+                    <div className="max-md:hidden flex gap-4 pt-4">
+                        <ButtonBlue type="submit" disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                            {isSubmitting ? "Mengirim..." : "Kirim"}
+                        </ButtonBlue>
+                        <ButtonRed type="button" onClick={() => router.back()} disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                            Batal
+                        </ButtonRed>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-5">
+                    <div>
+                        <Input
+                            type="text"
+                            value={title}
+                            onChange={(e: any) => setTitle(e.target.value)}
+                            label="Judul"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <div className="relative w-full mt-2">
+                            <textarea
+                                value={description}
+                                onChange={(e: any) => setDescription(e.target.value)}
+                                placeholder=" "
+                                required
+                                rows={6}
+                                className="peer flex w-full rounded-xl border-2 border-transparent bg-neutral-200 p-4 text-[10px] md:text-[20px] text-neutral-1000 transition-all duration-200 focus:border-neutral-1000 focus:bg-neutral-100 focus:outline-none focus:ring-0 resize-none not-placeholder-shown:border-neutral-1000 not-placeholder-shown:bg-neutral-100"
+                            />
+                            <label className="pointer-events-none absolute left-3 top-4 px-2 transition-all duration-200 font-semibold text-neutral-400 bg-transparent text-[12px] md:text-[20px] peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:bg-neutral-100 peer-focus:text-[10px] md:peer-focus:text-[16px] peer-focus:text-neutral-1000 peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:bg-neutral-100 peer-not-placeholder-shown:text-[10px] md:peer-not-placeholder-shown:text-[16px] peer-not-placeholder-shown:text-neutral-1000">
+                                Detail
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="relative border-2 border-dashed border-neutral-300 rounded-2xl p-6 flex flex-col items-center justify-center bg-white hover:bg-neutral-50 transition-colors h-[160px] cursor-pointer shadow-sm">
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                        />
+                        {previewUrl ? (
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                <Image src={previewUrl} alt="Preview" fill className="object-contain rounded-lg" />
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center text-neutral-500 gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-xs font-medium">Tarik atau pilih file di sini</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="md:hidden flex gap-4 pt-4">
+                        <ButtonBlue type="submit" disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                            {isSubmitting ? "Mengirim..." : "Kirim"}
+                        </ButtonBlue>
+                        <ButtonRed type="button" onClick={() => router.back()} disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                            Batal
+                        </ButtonRed>
+                    </div>
+                </div>
+            </form>
+        </div>
+    );
+}

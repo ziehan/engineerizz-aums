@@ -12,6 +12,16 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'mock.storage.local',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;
