@@ -2,6 +2,7 @@
 
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { useMapKey } from "@/hooks/useMapReady";
 
 interface ReportMapProps {
     latitude: number;
@@ -10,10 +11,17 @@ interface ReportMapProps {
 }
 
 export default function ReportMap({ latitude, longitude, label }: ReportMapProps) {
+    const mapKey = useMapKey();
+
+    if (mapKey === null) {
+        return <div className="h-full w-full animate-pulse bg-neutral-200" />;
+    }
+
     const position: [number, number] = [latitude, longitude];
 
     return (
         <MapContainer
+            key={mapKey}
             center={position}
             zoom={16}
             scrollWheelZoom={false}

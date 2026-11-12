@@ -27,7 +27,7 @@ export function RoleLayout({ allowedRoles, links, homeHref, children }: RoleLayo
   return (
     <SessionProvider value={{ user, token }}>
       <div className="min-h-screen bg-neutral-100 text-neutral-1000">
-        <Navbar links={links} user={user} homeHref={homeHref} />
+        < links={links} user={user} homeHref={homeHref} />
         <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">{children}</main>
       </div>
     </SessionProvider>
