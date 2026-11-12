@@ -5,6 +5,12 @@ import Image from "next/image";
 import useSession from "@/hooks/useSession";
 import { Loading } from "@/components/loading";
 import dynamic from "next/dynamic";
+import { Navbar, type NavLink } from "@/components/layout/navbar";
+import { SessionState } from "@/lib/types";
+
+const NAV_LINKS: NavLink[] = [
+    { label: "Home", href: "/", matchPrefix: "/" },
+];
 
 const ReportMap = dynamic(() => import("./ReportMap"), {
     ssr: false,
@@ -16,7 +22,7 @@ interface ClientProps {
 }
 
 export default function ReportDetailClient({ id }: ClientProps) {
-    const { token, isLoading: isSessionLoading } = useSession();
+    const { user, token, isLoading: isSessionLoading } = useSession();
     const [report, setReport] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -76,98 +82,97 @@ export default function ReportDetailClient({ id }: ClientProps) {
         : "[ Tanggal tidak tersedia ]";
 
     return (
-        <div className="w-full min-h-screen bg-neutral-100 p-6 md:p-12 flex justify-center">
-            <div className="w-full max-w-5xl flex flex-col gap-6">
+        <>
+            {user && <Navbar links={NAV_LINKS} user={user} homeHref="/dashboard" />}
+            <div className="w-full min-h-screen bg-neutral-100 p-6 md:p-12 flex justify-center">
+                <div className="w-full max-w-5xl flex flex-col gap-6">
 
-                <div className="flex flex-col">
-                    <h1 className="text-3xl font-bold text-neutral-1000 mb-1">
-                        {report.title}
-                    </h1>
-
-                    <p className="text-sm text-neutral-600 font-medium mb-4">
-                        oleh [ n*** p****... ]
-                    </p>
-
-                    <p className="text-sm text-neutral-500 font-semibold mb-3">
-                        [ {formattedDate} ]
-                    </p>
-
-                    <p className="text-neutral-800 leading-relaxed text-sm md:text-base">
-                        {report.description}
-                    </p>
-                </div>
-
-                <div className="mt-4">
-                    <h3 className="font-bold text-neutral-900 mb-2">[ Lokasi ]</h3>
-                    {report.locationAddress && (
-                        <p className="text-neutral-600 text-sm mb-4">{report.locationAddress}</p>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <div className="relative w-full h-[320px] rounded-xl overflow-hidden border border-neutral-300 shadow-sm bg-neutral-200">
-                        {hasCoords ? (
-                            <>
-                                <ReportMap latitude={lat} longitude={lng} label={report.title} />
-                                <a
-                                    href={`https://www.google.com/maps?q=${lat},${lng}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="absolute bottom-3 left-3 z-[1000] bg-black/70 text-white text-xs px-3 py-1.5 rounded-md"
-                                >
-                                    Buka di Google Maps
-                                </a>
-                            </>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-sm text-neutral-500">
-                                Koordinat lokasi tidak tersedia.
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="bg-white rounded-xl border border-neutral-300 p-6 shadow-sm flex flex-col min-h-[320px]">
-                        <h2 className="text-xl font-bold text-neutral-1000 mb-6">
-                            Rencana Tindakan
+                    <div className="flex flex-col">
+                        <h2 className="font-bold text-neutral-1000 mb-1">
+                            {report.title}
                         </h2>
 
-                        {report.actionPlan ? (
-                            <>
-                                <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
-                                    <span className="text-sm font-bold text-neutral-800">
-                                        [ {report.actionPlan.targetAgency || "Instansi"} ]
-                                    </span>
-                                    <span className="text-sm font-semibold text-neutral-600">
-                                        Estimasi: {report.actionPlan.estimatedDays || "XX"} Hari
-                                    </span>
-                                </div>
+                        <p className="text-[20px] max-md:text-[12px] text-neutral-900 font-semibold mb-3">
+                            {formattedDate}
+                        </p>
 
-                                <div className="text-neutral-700 text-sm flex-1 mb-6">
-                                    {report.actionPlan.actionSteps && report.actionPlan.actionSteps.length > 0 ? (
-                                        <ul className="list-disc pl-5 space-y-2">
-                                            {report.actionPlan.actionSteps.map((step: string, index: number) => (
-                                                <li key={index}>{step}</li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p>Menunggu rincian langkah pengerjaan.</p>
-                                    )}
-                                </div>
+                        <p className="text-[20px] max-md:text-[12px] text-neutral-800 leading-relaxed text-sm">
+                            {report.description}
+                        </p>
+                    </div>
 
-                                <div className="mt-auto pt-4 border-t border-neutral-100">
-                                    <span className="text-sm font-semibold text-neutral-500">
-                                        [ Assignee: Menunggu Petugas Lapangan ]
-                                    </span>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex items-center justify-center text-neutral-400 text-sm font-medium">
-                                Rencana Tindakan belum diterbitkan.
-                            </div>
+                    <div className="mt-4">
+                        <h3 className="font-bold text-neutral-900 mb-2">Lokasi</h3>
+                        {report.locationAddress && (
+                            <p className="text-[20px] max-md:text-[12px] text-neutral-600 mb-4">{report.locationAddress}</p>
                         )}
                     </div>
-                </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                        <div className="relative w-full h-[320px] rounded-xl overflow-hidden border border-neutral-300 shadow-sm bg-neutral-200">
+                            {hasCoords ? (
+                                <>
+                                    <ReportMap latitude={lat} longitude={lng} label={report.title} />
+                                    <a
+                                        href={`https://www.google.com/maps?q=${lat},${lng}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="absolute bottom-3 left-3 z-[1000] bg-black/70 text-white text-xs px-3 py-1.5 rounded-md"
+                                    >
+                                        Buka di Google Maps
+                                    </a>
+                                </>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-sm text-neutral-500">
+                                    Koordinat lokasi tidak tersedia.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-white rounded-xl border border-neutral-300 p-6 shadow-sm flex flex-col min-h-[320px]">
+                            <h3 className="font-bold text-neutral-1000 mb-6">
+                                Rencana Tindakan
+                            </h3>
+
+                            {report.actionPlan ? (
+                                <>
+                                    <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+                                        <span className="text-sm font-bold text-neutral-800">
+                                            [ {report.actionPlan.targetAgency || "Instansi"} ]
+                                        </span>
+                                        <span className="text-sm font-semibold text-neutral-600">
+                                            Estimasi: {report.actionPlan.estimatedDays || "XX"} Hari
+                                        </span>
+                                    </div>
+
+                                    <div className="text-neutral-700 text-sm flex-1 mb-6">
+                                        {report.actionPlan.actionSteps && report.actionPlan.actionSteps.length > 0 ? (
+                                            <ul className="list-disc pl-5 space-y-2">
+                                                {report.actionPlan.actionSteps.map((step: string, index: number) => (
+                                                    <li key={index}>{step}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p>Menunggu rincian langkah pengerjaan.</p>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-auto pt-4 border-t border-neutral-100">
+                                        <span className="text-sm font-semibold text-neutral-500">
+                                            [ Assignee: Menunggu Petugas Lapangan ]
+                                        </span>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center text-neutral-400 text-sm font-medium">
+                                    Rencana Tindakan belum diterbitkan.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                </div>
             </div>
-        </div>
+        </>
     );
 }

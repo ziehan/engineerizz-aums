@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { MapContainer, TileLayer, CircleMarker, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { useMapKey } from "@/hooks/useMapReady";
 
 interface LocationPickerProps {
     latitude: number | null;
@@ -32,10 +33,16 @@ function Recenter({ lat, lng }: { lat: number | null; lng: number | null }) {
 }
 
 export default function LocationPicker({ latitude, longitude, onChange }: LocationPickerProps) {
+    const mapKey = useMapKey();
     const hasPosition = latitude != null && longitude != null;
+
+    if (mapKey === null) {
+        return <div className="h-full w-full animate-pulse bg-neutral-200" />;
+    }
 
     return (
         <MapContainer
+            key={mapKey}
             center={hasPosition ? [latitude, longitude] : DEFAULT_CENTER}
             zoom={hasPosition ? 17 : 12}
             scrollWheelZoom={false}
