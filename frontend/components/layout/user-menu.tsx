@@ -6,13 +6,11 @@ import { useRouter } from "next/navigation";
 import { logout } from "@/lib/api/auth";
 import type { User } from "@/lib/types";
 
-/** Dropdown profil di navbar berisi info singkat dan tombol keluar. */
 export function UserMenu({ user }: { user: User }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Tutup dropdown saat klik di luar area menu.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -27,12 +25,12 @@ export function UserMenu({ user }: { user: User }) {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex max-w-44 cursor-pointer items-center gap-3 text-xs font-bold text-neutral-1000 sm:max-w-64 md:gap-4 md:text-sm"
+        className="flex max-w-28 min-w-0 cursor-pointer items-center gap-1.5 text-xs font-bold text-neutral-1000 sm:max-w-64 sm:gap-3 md:gap-4 md:text-sm"
       >
         <span className="truncate">{user.name}</span>
         <Image
@@ -46,7 +44,7 @@ export function UserMenu({ user }: { user: User }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-56 rounded-xl border border-neutral-200 bg-white p-3 shadow-lg">
+        <div className="absolute right-0 z-40 mt-2 w-56 max-w-[calc(100vw-1.5rem)] rounded-xl border border-neutral-200 bg-white p-3 shadow-lg">
           <p className="truncate text-sm font-semibold text-neutral-1000">{user.name}</p>
           <p className="truncate text-xs text-neutral-700">{user.email}</p>
           <p className="mt-1 text-[11px] font-semibold uppercase text-blue-700">

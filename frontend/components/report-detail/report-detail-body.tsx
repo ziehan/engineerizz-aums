@@ -17,9 +17,6 @@ interface ReportDetailBodyProps {
   logsRestricted?: boolean;
 }
 
-/**
- * Susunan halaman detail laporan yang dipakai bersama oleh petugas dan admin:
- */
 export function ReportDetailBody({
   report,
   actions,
@@ -46,7 +43,7 @@ export function ReportDetailBody({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
-          <ReportMap points={points} className="h-64 md:h-80" />
+          <ReportMap points={points} className="h-56 sm:h-64 md:h-80" />
           <ReportPhotos report={report} />
         </div>
         <div className="flex flex-col gap-4">

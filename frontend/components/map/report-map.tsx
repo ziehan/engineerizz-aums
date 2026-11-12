@@ -22,7 +22,6 @@ interface ReportMapProps {
 
 const JAKARTA: [number, number] = [-6.2088, 106.8456];
 
-/** Pin berbentuk tetesan dengan warna sesuai prioritas laporan. */
 function pinHtml(color: string) {
   return `<svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">
     <path d="M16 0C7.2 0 0 7 0 15.7 0 27 16 42 16 42s16-15 16-26.3C32 7 24.8 0 16 0z" fill="${color}" stroke="#fff" stroke-width="2"/>
@@ -34,11 +33,6 @@ const escapeHtml = (s: string) =>
 
 const STYLESHEET_ID = "leaflet-stylesheet";
 
-/**
- * Memuat stylesheet Leaflet dari /public (disalin dari node_modules/leaflet/dist).
- * Tidak di-import langsung karena aturan CSS Turbopack di next.config.ts
- * memproses seluruh *.css dengan loader Tailwind.
- */
 function ensureLeafletStyles() {
   if (document.getElementById(STYLESHEET_ID)) return;
   const link = document.createElement("link");
@@ -48,15 +42,12 @@ function ensureLeafletStyles() {
   document.head.appendChild(link);
 }
 
-/**
- * Peta interaktif berbasis Leaflet + tile OpenStreetMap.
- * Leaflet dimuat dinamis di sisi klien karena membutuhkan objek `window`.
- */
 export function ReportMap({ points, className, singleZoom = 16 }: ReportMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let map: import("leaflet").Map | undefined;
+    let observer: ResizeObserver | undefined;
     let cancelled = false;
 
     ensureLeafletStyles();
@@ -94,18 +85,28 @@ export function ReportMap({ points, className, singleZoom = 16 }: ReportMapProps
           { padding: [30, 30], maxZoom: 15 },
         );
       }
+
+      observer = new ResizeObserver(() => {
+        map?.invalidateSize();
+      });
+      observer.observe(containerRef.current);
     })();
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
       map?.remove();
     };
   }, [points, singleZoom]);
 
   return (
     <div
-      ref={containerRef}
-      className={cn("z-0 h-64 w-full overflow-hidden rounded-2xl bg-neutral-200 shadow-md", className)}
-    />
+      className={cn(
+        "relative isolate z-0 h-56 w-full min-w-0 overflow-hidden rounded-2xl bg-neutral-200 shadow-md sm:h-64",
+        className,
+      )}
+    >
+      <div ref={containerRef} className="relative h-full w-full" />
+    </div>
   );
 }
