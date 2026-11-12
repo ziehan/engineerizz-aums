@@ -8,12 +8,10 @@ import { ReportListSection } from "@/components/reports/report-list-section";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import useReportList from "@/hooks/useReportList";
 
-/** Dashboard petugas: ringkasan, peta sebaran aduan, dan daftar aduan masyarakat. */
 export default function OfficerDashboardPage() {
   const { user } = useCurrentUser();
   const { reports, isLoading, error, reload } = useReportList();
 
-  // Memo agar peta tidak dibuild ulang pada setiap render.
   const points = useMemo<MapPoint[]>(
     () =>
       reports.map((r) => ({
@@ -37,7 +35,10 @@ export default function OfficerDashboardPage() {
       <ReportStats reports={reports} />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_3fr] lg:gap-8">
-        <ReportMap points={points} className="h-72 lg:sticky lg:top-20 lg:h-[34rem]" />
+        <ReportMap
+          points={points}
+          className="h-56 sm:h-64 md:h-80 lg:sticky lg:top-20 lg:h-[34rem]"
+        />
         <ReportListSection
           title="Aduan Masyarakat"
           reports={reports}

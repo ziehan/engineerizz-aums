@@ -21,9 +21,6 @@ interface NavbarProps {
   homeHref: string;
 }
 
-/**
- Navbar responsif
- */
 export function Navbar({ links, user, homeHref }: NavbarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -39,14 +36,14 @@ export function Navbar({ links, user, homeHref }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white shadow-sm">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 md:px-8">
-        <Link href={homeHref} className="flex items-center gap-3">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-4 md:px-8">
+        <Link href={homeHref} className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Image
             src="/logo-fix.svg"
             alt="Logo AUMS"
             width={36}
             height={36}
-            className="h-9 w-9 shrink-0 object-contain"
+            className="h-8 w-8 shrink-0 object-contain sm:h-9 sm:w-9"
           />
           <span className="text-sm font-bold tracking-wide text-neutral-1000">AUMS</span>
         </Link>
@@ -62,14 +59,14 @@ export function Navbar({ links, user, homeHref }: NavbarProps) {
           })}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
           <UserMenu user={user} />
           <button
             type="button"
             aria-label="Buka menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="flex h-9 w-9 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg hover:bg-neutral-200 md:hidden"
+            className="flex h-9 w-9 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg hover:bg-neutral-200 md:hidden"
           >
             <span className={cn("h-0.5 w-5 bg-neutral-1000 transition", open && "translate-y-1.5 rotate-45")} />
             <span className={cn("h-0.5 w-5 bg-neutral-1000 transition", open && "opacity-0")} />
