@@ -8,6 +8,7 @@ import { PublicReportsMap } from "@/components/homepage/PublicReportsMap";
 import { Navbar, type NavLink } from "@/components/layout/navbar";
 import { Loading } from "@/components/loading";
 import type { User } from "@/lib/types";
+import useReportList from "@/hooks/useReportList";
 
 const NAV_LINKS: NavLink[] = [
   { label: "Buat Aduan", href: "/reports/create", matchPrefix: "/reports/create" },
@@ -25,6 +26,7 @@ type AuthState =
 export default function LandingPage() {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const { reports, isLoading, error } = useReportList();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,8 +109,8 @@ export default function LandingPage() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-12 max-md:gap-2 md:px-2">
           {isLoggedIn ? (
             <>
-              <PublicReportsMap />
-              <PublicReportList />
+              <PublicReportsMap reports={reports} isLoading={isLoading} error={error} />
+              <PublicReportList reports={reports} isLoading={isLoading} error={error} />
             </>
           ) : (
             <LoginPrompt />

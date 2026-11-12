@@ -7,7 +7,7 @@ import { Loading } from "@/components/loading";
 import { ButtonBlue } from "@/components/buttons/button-blue";
 import { formatDate } from "@/lib/formatDate";
 import { cn } from "@/lib/utils";
-import useReportList from "@/hooks/useReportList";
+import type { ReportsData } from "./types";
 
 const SELECT_CLASS = "w-full appearance-none rounded-xl border border-neutral-300 bg-neutral-100 pl-5 pr-10 py-2.5 text-[10px] md:text-[15px] text-neutral-1000 outline-none focus:border-blue-500 md:w-auto bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23303030%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-position-[right_12px_center] bg-size-[16px_16px] cursor-pointer";
 
@@ -37,19 +37,21 @@ const STATUS_LABEL: Record<string, string> = {
 
 const BADGE = "rounded-md px-3 pb-0.5 pt-1.5 text-[12px] font-semibold";
 
-interface PublicReportListProps {
+interface PublicReportListProps extends ReportsData {
   title?: string;
   pageSize?: number;
   className?: string;
 }
 
 export function PublicReportList({
-  title = "List Aduan",
+  reports,
+  isLoading,
+  error,
+  title = "Aduan Masyarakat",
   pageSize = 10,
   className,
 }: PublicReportListProps) {
   const router = useRouter();
-  const { reports, isLoading, error } = useReportList();
 
   const [filters, setFilters] = useState({
     page: 1,
