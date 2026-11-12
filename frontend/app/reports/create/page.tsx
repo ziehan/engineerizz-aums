@@ -3,10 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Input } from "@/components/input"; 
-import { ButtonBlue } from "@/components/buttons/button-blue"; 
+import { Input } from "@/components/input";
+import { ButtonBlue } from "@/components/buttons/button-blue";
 import { getCoordinates } from "@/lib/getCoordinate";
 import { ButtonRed } from "@/components/buttons/button-red";
+import dynamic from "next/dynamic";
+
+const LocationPicker = dynamic(() => import("./LocationPicker"), {
+    ssr: false,
+    loading: () => <div className="h-full w-full animate-pulse bg-neutral-200" />,
+});
 
 export default function CreateReportPage() {
     const router = useRouter();
@@ -27,21 +33,33 @@ export default function CreateReportPage() {
         handleFetchLocation();
     }, []);
 
+    const fetchAddress = async (lat: number, lng: number) => {
+        try {
+            const res = await fetch(
+                `http://localhost:5000/api/v1/maps/reverse-geocode?lat=${lat}&lng=${lng}`
+            );
+            const json = await res.json();
+            const address = json.data?.address;
+            if (res.ok && address) setLocationAddress(address);
+        } catch {
+        }
+    };
+
+    const handlePickLocation = (lat: number, lng: number) => {
+        setLatitude(lat);
+        setLongitude(lng);
+        setErrorMessage(null);
+        fetchAddress(lat, lng);
+    };
+
     const handleFetchLocation = async () => {
         setIsLoadingGPS(true);
         setErrorMessage(null);
         try {
             const coords = await getCoordinates();
-            setLatitude(coords.latitude);
-            setLongitude(coords.longitude);
-
-            const res = await fetch(`http://localhost:5000/api/v1/maps/reverse-geocode?lat=${coords.latitude}&lng=${coords.longitude}`);
-            const json = await res.json();
-            if (json.success && json.data?.address) {
-                setLocationAddress(json.data.address);
-            }
+            handlePickLocation(coords.latitude, coords.longitude);
         } catch (err: any) {
-            setErrorMessage(err.message || "Gagal mendeteksi lokasi GPS.");
+            setErrorMessage(`${err.message || "Gagal mendeteksi lokasi GPS."} Anda bisa memilih lokasi langsung di peta.`);
         } finally {
             setIsLoadingGPS(false);
         }
@@ -100,7 +118,7 @@ export default function CreateReportPage() {
                 throw new Error(result.message || "Gagal mengirim aduan.");
             }
 
-            router.push("/dashboard"); 
+            router.push("/dashboard");
         } catch (err: any) {
             setErrorMessage(err.message || "Terjadi kesalahan pada server.");
         } finally {
@@ -126,18 +144,29 @@ export default function CreateReportPage() {
             <form onSubmit={handleSubmit} className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
 
                 <div className="flex flex-col gap-5">
-                    <div className="relative border border-neutral-300 rounded-2xl overflow-hidden bg-neutral-200 h-[280px] flex items-center justify-center shadow-sm">
-                        <Image
-                            src="/map-indo.png"
-                            alt="Simulasi Peta Lokasi"
-                            fill
-                            className="object-cover opacity-80"
-                            sizes="(max-width: 768px) 100vw, 500px"
+                    <div className="relative border border-neutral-300 rounded-2xl overflow-hidden bg-neutral-200 h-[280px] shadow-sm">
+                        <LocationPicker
+                            latitude={latitude}
+                            longitude={longitude}
+                            onChange={handlePickLocation}
                         />
 
-                        <div className="absolute bottom-3 z-10 bg-black/70 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-sm">
-                            {isLoadingGPS ? "Mendeteksi posisi GPS..." : latitude ? `GPS: ${latitude}, ${longitude}` : "GPS Belum Aktif"}
+                        <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] bg-black/70 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-sm">
+                            {isLoadingGPS
+                                ? "Mendeteksi posisi GPS..."
+                                : latitude !== null
+                                    ? `${latitude}, ${longitude}`
+                                    : "Klik peta untuk memilih lokasi"}
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={handleFetchLocation}
+                            disabled={isLoadingGPS}
+                            className="absolute top-3 right-3 z-[1000] bg-white text-neutral-900 text-xs font-semibold px-3 py-1.5 rounded-md shadow disabled:opacity-60"
+                        >
+                            Gunakan lokasi saya
+                        </button>
                     </div>
 
                     <div className="text-center text-xs text-neutral-500 font-medium">atau</div>

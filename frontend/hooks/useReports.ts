@@ -59,8 +59,6 @@ export default function useReports(token: string | null, filters: ReportFilters 
           throw new Error(result.message || "Gagal mengambil daftar laporan.");
         }
 
-        alert(JSON.stringify(result.data));
-
         setReports(result.data || []);
       } catch (err: any) {
         setError(err.message || "Terjadi kesalahan sistem.");
