@@ -11,6 +11,10 @@ const notoSansMalayalam = Noto_Sans_Malayalam({
 export const metadata: Metadata = {
   title: "AUMS",
   description: "AUMS App",
+  icons: {
+    icon: "/logo-white.svg",
+    shortcut: "/logo-white.svg",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
