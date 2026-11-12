@@ -104,6 +104,7 @@ class ReportController {
       "create",
       "list",
       "get",
+      "getMyReports",
       "approve",
       "verify",
       "delete",
@@ -132,6 +133,11 @@ class ReportController {
   async create(req, res, next) {
     try {
       const input = { ...(req.body ?? {}) };
+      const reporterId =
+        req.user?.userId || req.user?.id || req.body?.reporterId || null;
+      if (reporterId) {
+        input.reporterId = reporterId;
+      }
       const imageBuffer =
         req.processedImageBuffer || req.processedImage || req.file?.buffer;
       if (imageBuffer) {
@@ -177,7 +183,48 @@ class ReportController {
   async list(req, res, next) {
     try {
       const role = req.user?.role || "CITIZEN";
-      res.json({ data: await this.reportService.listReports(req.query, role) });
+      const userId = req.user?.userId || req.user?.id || null;
+      res.json({
+        data: await this.reportService.listReports(req.query, role, userId),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Retrieves reports submitted specifically by the authenticated citizen.
+   *
+   * @description
+   * Handles GET /api/v1/reports/me endpoint.
+   *
+   * @param {import("express").Request} req - Express request with authenticated user.
+   * @param {import("express").Response} res - Express response object.
+   * @param {import("express").NextFunction} next - Express next middleware function.
+   * @returns {Promise<void>} Sends HTTP 200 OK with array of user's own reports.
+   */
+  async getMyReports(req, res, next) {
+    try {
+      const userId = req.user?.userId || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+      const role = req.user?.role || "CITIZEN";
+      const reports =
+        typeof this.reportService?.listMyReports === "function"
+          ? await this.reportService.listMyReports(userId, req.query, role)
+          : await this.reportService.listReports(
+              { ...req.query, reporterId: userId },
+              role,
+              userId,
+            );
+      return res.json({
+        success: true,
+        data: reports,
+      });
     } catch (error) {
       next(error);
     }
@@ -198,6 +245,9 @@ class ReportController {
    */
   async get(req, res, next) {
     try {
+      if (req.params.id === "me") {
+        return this.getMyReports(req, res, next);
+      }
       const role = req.user?.role || "CITIZEN";
       res.json({
         data: await this.reportService.getReport(req.params.id, role),
@@ -334,6 +384,11 @@ class ReportController {
         imageBase64: req.processedImageBase64 || null,
         imageMimeType: req.processedImageMimeType || null,
       };
+      const reporterId =
+        req.user?.userId || req.user?.id || req.body?.reporterId || null;
+      if (reporterId) {
+        input.reporterId = reporterId;
+      }
       if (!input.locationAddress) {
         const address = this.geoService
           ? await this.geoService.reverseGeocode(
@@ -405,6 +460,7 @@ class ReportController {
           priority: this.priorityFromScore(aiData.priorityScore),
           isDuplicate: false,
           aiProcessed: true,
+          ...(reporterId ? { reporterId } : {}),
         },
         embedding,
       );
