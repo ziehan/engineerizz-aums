@@ -2,7 +2,7 @@ const { GoogleGenAI } = require("@google/genai");
 const { assertSafeExternalUrl } = require("../utils/ssrfGuard");
 
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
-const DEFAULT_EMBEDDING_MODEL = "text-embedding-004";
+const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 const DEFAULT_EMBEDDING_DIMENSIONS = 768;
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_OUTPUT_TOKENS = 1000;
