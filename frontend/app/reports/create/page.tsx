@@ -8,6 +8,13 @@ import { ButtonBlue } from "@/components/buttons/button-blue";
 import { getCoordinates } from "@/lib/getCoordinate";
 import { ButtonRed } from "@/components/buttons/button-red";
 import dynamic from "next/dynamic";
+import { Navbar, type NavLink } from "@/components/layout/navbar";
+import { SessionState } from "@/lib/types";
+import useSession from "@/hooks/useSession";
+
+const NAV_LINKS: NavLink[] = [
+    { label: "Home", href: "/", matchPrefix: "/" },
+];
 
 const LocationPicker = dynamic(() => import("./LocationPicker"), {
     ssr: false,
@@ -16,6 +23,7 @@ const LocationPicker = dynamic(() => import("./LocationPicker"), {
 
 export default function CreateReportPage() {
     const router = useRouter();
+    const { user, isLoading, token }: SessionState = useSession();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [category, setCategory] = useState("Jalan Rusak");
@@ -127,128 +135,131 @@ export default function CreateReportPage() {
     };
 
     return (
-        <div className="flex min-h-screen w-full flex-col bg-neutral-100 p-6 md:p-15 items-center">
-            <div className="mb-8 w-full max-w-4xl text-center">
-                <h2 className="font-bold text-neutral-1000">Ajukan Aduan Baru</h2>
-                <p className="text-[20px] text-neutral-800 mt-2">
-                    Anda tidak perlu khawatir, identitas pelapor dirahasiakan dan hanya bisa diakses oleh petugas yang berwenang.
-                </p>
-            </div>
-
-            {errorMessage && (
-                <div className="mb-6 w-full max-w-4xl rounded-lg bg-red-50 p-4 text-red-600 border border-red-200 text-sm">
-                    {errorMessage}
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                <div className="flex flex-col gap-5">
-                    <div className="relative border border-neutral-300 rounded-2xl overflow-hidden bg-neutral-200 h-[280px] shadow-sm">
-                        <LocationPicker
-                            latitude={latitude}
-                            longitude={longitude}
-                            onChange={handlePickLocation}
-                        />
-
-                        <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] bg-black/70 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-sm">
-                            {isLoadingGPS
-                                ? "Mendeteksi posisi GPS..."
-                                : latitude !== null
-                                    ? `${latitude}, ${longitude}`
-                                    : "Klik peta untuk memilih lokasi"}
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={handleFetchLocation}
-                            disabled={isLoadingGPS}
-                            className="absolute top-3 right-3 z-[1000] bg-white text-neutral-900 text-xs font-semibold px-3 py-1.5 rounded-md shadow disabled:opacity-60"
-                        >
-                            Gunakan lokasi saya
-                        </button>
-                    </div>
-
-                    <div className="text-center text-xs text-neutral-500 font-medium">atau</div>
-
-                    <div className="max-md:-mb-3">
-                        <Input
-                            type="text"
-                            name="locationAddress"
-                            value={locationAddress}
-                            onChange={(e: any) => setLocationAddress(e.target.value)}
-                            label="Alamat Lokasi (Opsional)"
-                        />
-                    </div>
-
-                    <div className="max-md:hidden flex gap-4 pt-4">
-                        <ButtonBlue type="submit" disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
-                            {isSubmitting ? "Mengirim..." : "Kirim"}
-                        </ButtonBlue>
-                        <ButtonRed type="button" onClick={() => router.back()} disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
-                            Batal
-                        </ButtonRed>
-                    </div>
+        <>
+            {user && <Navbar links={NAV_LINKS} user={user} homeHref="/dashboard" />}
+            <div className="flex min-h-screen w-full flex-col bg-neutral-100 p-6 md:p-15 items-center">
+                <div className="mb-8 w-full max-w-4xl text-center">
+                    <h2 className="font-bold text-neutral-1000">Ajukan Aduan Baru</h2>
+                    <p className="text-[20px] text-neutral-800 mt-2">
+                        Anda tidak perlu khawatir, identitas pelapor dirahasiakan dan hanya bisa diakses oleh petugas yang berwenang.
+                    </p>
                 </div>
 
-                <div className="flex flex-col gap-5">
-                    <div>
-                        <Input
-                            type="text"
-                            value={title}
-                            onChange={(e: any) => setTitle(e.target.value)}
-                            label="Judul"
-                            required
-                        />
+                {errorMessage && (
+                    <div className="mb-6 w-full max-w-4xl rounded-lg bg-red-50 p-4 text-red-600 border border-red-200 text-sm">
+                        {errorMessage}
                     </div>
+                )}
 
-                    <div>
-                        <div className="relative w-full mt-2">
-                            <textarea
-                                value={description}
-                                onChange={(e: any) => setDescription(e.target.value)}
-                                placeholder=" "
-                                required
-                                rows={6}
-                                className="peer flex w-full rounded-xl border-2 border-transparent bg-neutral-200 p-4 text-[10px] md:text-[20px] text-neutral-1000 transition-all duration-200 focus:border-neutral-1000 focus:bg-neutral-100 focus:outline-none focus:ring-0 resize-none not-placeholder-shown:border-neutral-1000 not-placeholder-shown:bg-neutral-100"
+                <form onSubmit={handleSubmit} className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                    <div className="flex flex-col gap-5">
+                        <div className="relative border border-neutral-300 rounded-2xl overflow-hidden bg-neutral-200 h-[280px] shadow-sm">
+                            <LocationPicker
+                                latitude={latitude}
+                                longitude={longitude}
+                                onChange={handlePickLocation}
                             />
-                            <label className="pointer-events-none absolute left-3 top-4 px-2 transition-all duration-200 font-semibold text-neutral-400 bg-transparent text-[12px] md:text-[20px] peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:bg-neutral-100 peer-focus:text-[10px] md:peer-focus:text-[16px] peer-focus:text-neutral-1000 peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:bg-neutral-100 peer-not-placeholder-shown:text-[10px] md:peer-not-placeholder-shown:text-[16px] peer-not-placeholder-shown:text-neutral-1000">
-                                Detail
-                            </label>
+
+                            <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] bg-black/70 text-white text-xs px-3 py-1.5 rounded-md backdrop-blur-sm">
+                                {isLoadingGPS
+                                    ? "Mendeteksi posisi GPS..."
+                                    : latitude !== null
+                                        ? `${latitude}, ${longitude}`
+                                        : "Klik peta untuk memilih lokasi"}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleFetchLocation}
+                                disabled={isLoadingGPS}
+                                className="absolute top-3 right-3 z-[1000] bg-white text-neutral-900 text-xs font-semibold px-3 py-1.5 rounded-md shadow disabled:opacity-60"
+                            >
+                                Gunakan lokasi saya
+                            </button>
+                        </div>
+
+                        <div className="text-center text-xs text-neutral-500 font-medium">atau</div>
+
+                        <div className="max-md:-mb-3">
+                            <Input
+                                type="text"
+                                name="locationAddress"
+                                value={locationAddress}
+                                onChange={(e: any) => setLocationAddress(e.target.value)}
+                                label="Alamat Lokasi (Opsional)"
+                            />
+                        </div>
+
+                        <div className="max-md:hidden flex gap-4 pt-4">
+                            <ButtonBlue type="submit" disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                                {isSubmitting ? "Mengirim..." : "Kirim"}
+                            </ButtonBlue>
+                            <ButtonRed type="button" onClick={() => router.back()} disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                                Batal
+                            </ButtonRed>
                         </div>
                     </div>
 
-                    <div className="relative border-2 border-dashed border-neutral-300 rounded-2xl p-6 flex flex-col items-center justify-center bg-white hover:bg-neutral-50 transition-colors h-[160px] cursor-pointer shadow-sm">
-                        <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handleFileChange}
-                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                        />
-                        {previewUrl ? (
-                            <div className="relative w-full h-full flex items-center justify-center">
-                                <Image src={previewUrl} alt="Preview" fill className="object-contain rounded-lg" />
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center text-neutral-500 gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span className="text-xs font-medium">Tarik atau pilih file di sini</span>
-                            </div>
-                        )}
-                    </div>
+                    <div className="flex flex-col gap-5">
+                        <div>
+                            <Input
+                                type="text"
+                                value={title}
+                                onChange={(e: any) => setTitle(e.target.value)}
+                                label="Judul"
+                                required
+                            />
+                        </div>
 
-                    <div className="md:hidden flex gap-4 pt-4">
-                        <ButtonBlue type="submit" disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
-                            {isSubmitting ? "Mengirim..." : "Kirim"}
-                        </ButtonBlue>
-                        <ButtonRed type="button" onClick={() => router.back()} disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
-                            Batal
-                        </ButtonRed>
+                        <div>
+                            <div className="relative w-full mt-2">
+                                <textarea
+                                    value={description}
+                                    onChange={(e: any) => setDescription(e.target.value)}
+                                    placeholder=" "
+                                    required
+                                    rows={6}
+                                    className="peer flex w-full rounded-xl border-2 border-transparent bg-neutral-200 p-4 text-[10px] md:text-[20px] text-neutral-1000 transition-all duration-200 focus:border-neutral-1000 focus:bg-neutral-100 focus:outline-none focus:ring-0 resize-none not-placeholder-shown:border-neutral-1000 not-placeholder-shown:bg-neutral-100"
+                                />
+                                <label className="pointer-events-none absolute left-3 top-4 px-2 transition-all duration-200 font-semibold text-neutral-400 bg-transparent text-[12px] md:text-[20px] peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:bg-neutral-100 peer-focus:text-[10px] md:peer-focus:text-[16px] peer-focus:text-neutral-1000 peer-not-placeholder-shown:top-0 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:bg-neutral-100 peer-not-placeholder-shown:text-[10px] md:peer-not-placeholder-shown:text-[16px] peer-not-placeholder-shown:text-neutral-1000">
+                                    Detail
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="relative border-2 border-dashed border-neutral-300 rounded-2xl p-6 flex flex-col items-center justify-center bg-white hover:bg-neutral-50 transition-colors h-[160px] cursor-pointer shadow-sm">
+                            <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={handleFileChange}
+                                className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                            />
+                            {previewUrl ? (
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                    <Image src={previewUrl} alt="Preview" fill className="object-contain rounded-lg" />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center text-neutral-500 gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="text-xs font-medium">Tarik atau pilih file di sini</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="md:hidden flex gap-4 pt-4">
+                            <ButtonBlue type="submit" disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                                {isSubmitting ? "Mengirim..." : "Kirim"}
+                            </ButtonBlue>
+                            <ButtonRed type="button" onClick={() => router.back()} disabled={isSubmitting} className="w-full py-4 justify-center text-white font-semibold rounded-xl">
+                                Batal
+                            </ButtonRed>
+                        </div>
                     </div>
-                </div>
-            </form>
-        </div>
+                </form>
+            </div>
+        </>
     );
 }
