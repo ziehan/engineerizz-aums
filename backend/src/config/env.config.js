@@ -4,6 +4,13 @@ const { z } = require("zod");
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
+// Clean surrounding quotes from environment variables injected by Docker / Cloud platforms
+for (const [key, value] of Object.entries(process.env)) {
+  if (typeof value === "string") {
+    process.env[key] = value.trim().replace(/^["']+|["']+$/g, "");
+  }
+}
+
 const nodeEnv = process.env.NODE_ENV || "development";
 const isProduction = nodeEnv === "production";
 
@@ -39,7 +46,10 @@ const port = Number(process.env.PORT || 5000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be a valid TCP port number");
 }
-const host = process.env.HOST || "127.0.0.1";
+const host =
+  process.env.HOST === "localhost" || !process.env.HOST
+    ? "0.0.0.0"
+    : process.env.HOST;
 
 /**
  * Read-only configuration object holding application environment settings.
