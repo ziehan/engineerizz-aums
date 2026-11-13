@@ -88,11 +88,46 @@ async function runIntakeAgent(data) {
 
     const currentImage =
       data.imageBase64 || data.photoBase64 || data.photoUrl || null;
-    const images = [currentImage, ...candidateImages].filter(Boolean);
+    const images = [currentImage, ...candidateImages.slice(0, 3)].filter(
+      Boolean,
+    );
+
+    const sanitizedExistingReports = Array.isArray(data.existingReports)
+      ? data.existingReports.map((candidate, idx) => {
+          const {
+            imageBase64: _ib,
+            photoBase64: _pb,
+            embedding: _emb,
+            ...rest
+          } = candidate || {};
+          if (
+            typeof rest.photoUrl === "string" &&
+            rest.photoUrl.startsWith("data:")
+          ) {
+            rest.photoUrl = `[inline-candidate-image-${idx + 1}]`;
+          }
+          return rest;
+        })
+      : [];
+
+    const {
+      imageBase64: _imgBase64,
+      photoBase64: _photoBase64,
+      embedding: _embedding,
+      ...restData
+    } = data;
+    const promptData = {
+      ...restData,
+      ...(typeof restData.photoUrl === "string" &&
+      restData.photoUrl.startsWith("data:")
+        ? { photoUrl: "[inline-report-image]" }
+        : {}),
+      existingReports: sanitizedExistingReports,
+    };
 
     const result = await generateJson(
       `${intake}\n${bahasaIndonesiaRule}`,
-      data,
+      promptData,
       {
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         responseSchema,

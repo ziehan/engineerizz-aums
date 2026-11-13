@@ -90,10 +90,29 @@ async function runVerificationAgent(beforeImg, afterImg, metadata = {}) {
     throw new TypeError("Verification requires both before and after images");
   }
   try {
+    const {
+      beforeImageBase64: _bib,
+      afterImageBase64: _aib,
+      beforePhotoBase64: _bpb,
+      afterPhotoBase64: _apb,
+      ...cleanMetadata
+    } = details || {};
+    if (
+      typeof cleanMetadata.beforePhotoUrl === "string" &&
+      cleanMetadata.beforePhotoUrl.startsWith("data:")
+    ) {
+      cleanMetadata.beforePhotoUrl = "[inline-before-image]";
+    }
+    if (
+      typeof cleanMetadata.afterPhotoUrl === "string" &&
+      cleanMetadata.afterPhotoUrl.startsWith("data:")
+    ) {
+      cleanMetadata.afterPhotoUrl = "[inline-after-image]";
+    }
     const userData = {
       reportDescription: details.reportDescription || details.description || "",
       auditNotes: details.auditNotes || "",
-      metadata: details,
+      metadata: cleanMetadata,
     };
     return await generateJson(
       systemPrompt,
