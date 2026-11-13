@@ -4,10 +4,20 @@ import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { ActionButton } from "@/components/ui/action-button";
 import { Alert } from "@/components/ui/feedback";
-import { Field, SelectField, TextArea, TextField } from "@/components/ui/form-fields";
+import {
+  Field,
+  SelectField,
+  TextArea,
+  TextField,
+} from "@/components/ui/form-fields";
 import { fetchDepartments } from "@/lib/api/admin";
 import { requestPlan } from "@/lib/api/reports";
-import { clearDraft, getDraft, saveDraft, type PlanDraft } from "@/lib/task-store";
+import {
+  clearDraft,
+  getDraft,
+  saveDraft,
+  type PlanDraft,
+} from "@/lib/task-store";
 import type { Department, Report } from "@/lib/report-types";
 
 interface PlanModalProps {
@@ -30,8 +40,17 @@ function initialValues(report: Report, userId: string): PlanDraft {
 }
 
 /** Modal "Planning": menyusun rencana penanganan lalu mengirimkannya ke sistem. */
-export function PlanModal({ report, userId, onClose, onSubmitted }: PlanModalProps) {
-  const [values, setValues] = useState<PlanDraft>({ agency: "", days: "", detail: "" });
+export function PlanModal({
+  report,
+  userId,
+  onClose,
+  onSubmitted,
+}: PlanModalProps) {
+  const [values, setValues] = useState<PlanDraft>({
+    agency: "",
+    days: "",
+    detail: "",
+  });
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState("");
@@ -39,7 +58,9 @@ export function PlanModal({ report, userId, onClose, onSubmitted }: PlanModalPro
 
   useEffect(() => {
     setValues(initialValues(report, userId));
-    fetchDepartments().then(setDepartments).catch(() => setDepartments([]));
+    fetchDepartments()
+      .then(setDepartments)
+      .catch(() => setDepartments([]));
   }, [report, userId]);
 
   const update = (name: keyof PlanDraft, value: string) =>
@@ -52,11 +73,33 @@ export function PlanModal({ report, userId, onClose, onSubmitted }: PlanModalPro
   };
 
   const handleSubmit = async () => {
+    const targetAgency = values.agency.trim();
+    const actionSteps = values.detail
+      .split("\n")
+      .map((step) => step.trim())
+      .filter(Boolean);
+    const estimatedDays = Math.max(0, Number.parseInt(values.days, 10) || 0);
+
+    if (!targetAgency) {
+      setError("Silakan pilih atau isi instansi terkait terlebih dahulu.");
+      return;
+    }
+    if (actionSteps.length === 0) {
+      setError(
+        "Silakan isi detail langkah rencana penanganan terlebih dahulu.",
+      );
+      return;
+    }
+
     setIsBusy(true);
     setError("");
     setNotice("");
     try {
-      await requestPlan(report.id);
+      await requestPlan(report.id, {
+        targetAgency,
+        estimatedDays,
+        actionSteps,
+      });
       clearDraft(userId, report.id, "plan");
       onSubmitted();
     } catch (e) {
@@ -69,18 +112,22 @@ export function PlanModal({ report, userId, onClose, onSubmitted }: PlanModalPro
   return (
     <Modal title="Planning" onClose={onClose}>
       <p className="mb-4 text-xs text-neutral-800">
-        Tuliskan planning untuk menangani aduan ini. Pastikan warga dapat memahami serta planning
-        sesuai dengan masalah dan dapat dilaksanakan.
+        Tuliskan planning untuk menangani aduan ini. Pastikan warga dapat
+        memahami serta planning sesuai dengan masalah dan dapat dilaksanakan.
       </p>
 
       <div className="grid gap-3">
         <div className="grid grid-cols-[1fr_6rem_auto] items-end gap-2">
           <Field label="Instansi yang dipilih">
-            <SelectField value={values.agency} onChange={(e) => update("agency", e.target.value)}>
+            <SelectField
+              value={values.agency}
+              onChange={(e) => update("agency", e.target.value)}
+            >
               <option value="">Pilih instansi</option>
-              {values.agency && !departments.some((d) => d.name === values.agency) && (
-                <option value={values.agency}>{values.agency}</option>
-              )}
+              {values.agency &&
+                !departments.some((d) => d.name === values.agency) && (
+                  <option value={values.agency}>{values.agency}</option>
+                )}
               {departments.map((d) => (
                 <option key={d.id} value={d.name}>
                   {d.name}
@@ -109,8 +156,10 @@ export function PlanModal({ report, userId, onClose, onSubmitted }: PlanModalPro
         </Field>
 
         <Alert tone="info">
-          Saat dikirim, sistem AI menyusun rencana final (instansi, estimasi, dan langkah kerja)
-          berdasarkan data aduan. Isian Anda tersimpan sebagai draf acuan.
+          Rencana awal diisi otomatis oleh AI. Anda dapat menyesuaikan instansi,
+          estimasi, dan langkah kerja, lalu klik <strong>Kirim</strong> untuk
+          menyimpan rencana final ke sistem (atau <strong>Simpan</strong> untuk
+          menyimpan draf di perangkat ini).
         </Alert>
         {error && <Alert>{error}</Alert>}
         {notice && <Alert tone="success">{notice}</Alert>}

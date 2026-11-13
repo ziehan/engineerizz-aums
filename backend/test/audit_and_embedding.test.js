@@ -267,7 +267,14 @@ test("maskReport hides raw auditLogs for CITIZEN and preserves full observabilit
   assert.equal(citizenView.targetAgency, "Dinas Pertamanan dan Hutan Kota");
   assert.equal(citizenView.auditLogs, undefined);
   assert.equal(citizenView.embedding, undefined);
-  assert.equal(citizenView.actionPlan, undefined);
+  assert.ok(citizenView.actionPlan);
+  assert.equal(
+    citizenView.actionPlan.targetAgency,
+    "Dinas Pertamanan dan Hutan Kota",
+  );
+  assert.equal(citizenView.actionPlan.actionSteps.length, 2);
+  assert.equal(citizenView.actionPlan.confidenceMetadata, undefined);
+  assert.equal(citizenView.actionPlan.confidenceScore, undefined);
 
   // 2. FIELD_OFFICER Role
   const officerView = service.maskReport(fullReport, "FIELD_OFFICER");

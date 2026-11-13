@@ -13,12 +13,19 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    dangerouslyAllowLocalIP: true,
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'mock.storage.local',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "mock.storage.local",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+        port: "",
+        pathname: "/**",
       },
     ],
   },

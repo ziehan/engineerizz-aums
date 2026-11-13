@@ -46,7 +46,9 @@ async function runStructuredLlm(
 ) {
   const startedAt = Date.now();
   const prompt = `<user_data>\n${JSON.stringify(input)}\n</user_data>`;
-  const normalizedImages = images.map((image) => imagePart(image));
+  const normalizedImages = (
+    await Promise.all(images.map((image) => imagePart(image)))
+  ).filter(Boolean);
   const contents = normalizedImages.length
     ? [{ role: "user", parts: [{ text: prompt }, ...normalizedImages] }]
     : prompt;
@@ -380,7 +382,7 @@ function sanitizeSchema(schema) {
   if (!schema || typeof schema !== "object") return schema;
   const sanitized = {};
   for (const [key, value] of Object.entries(schema)) {
-    if (key === "integer") continue;
+    if (key === "integer" || key === "normalizePercentage") continue;
     sanitized[key] = sanitizeSchema(value);
   }
   return sanitized;

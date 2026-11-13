@@ -72,15 +72,31 @@ async function runIntakeAgent(data) {
     throw new TypeError("Intake agent data must be an object");
   }
   try {
+    const candidateImages = [];
+    if (Array.isArray(data.existingReports)) {
+      for (const candidate of data.existingReports) {
+        const cImg =
+          candidate.imageBase64 ||
+          candidate.photoBase64 ||
+          candidate.photoUrl ||
+          candidate.photo;
+        if (cImg) {
+          candidateImages.push(cImg);
+        }
+      }
+    }
+
+    const currentImage =
+      data.imageBase64 || data.photoBase64 || data.photoUrl || null;
+    const images = [currentImage, ...candidateImages].filter(Boolean);
+
     const result = await generateJson(
       `${intake}\n${bahasaIndonesiaRule}`,
       data,
       {
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         responseSchema,
-        images: [data.imageBase64 || data.photoBase64 || data.photoUrl].filter(
-          Boolean,
-        ),
+        images,
       },
     );
     if (!result.isDuplicate && result.parentReportId !== null) {

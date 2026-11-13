@@ -94,7 +94,7 @@ function sanitizeBase64(value) {
  * @returns {Object|null} Gemini-compatible image part or null if empty.
  * @throws {TypeError} If image format is unsupported.
  */
-function imagePart(image, defaultMimeType = "image/jpeg") {
+async function imagePart(image, defaultMimeType = "image/jpeg") {
   if (!image) return null;
 
   if (typeof image === "object" && image.inlineData) {
@@ -169,10 +169,40 @@ function imagePart(image, defaultMimeType = "image/jpeg") {
   }
 
   if (/^https?:\/\//i.test(normalizedImage)) {
-    const safeUrl = assertSafeExternalUrl(normalizedImage);
-    return {
-      fileData: { fileUri: safeUrl, mimeType: defaultMimeType },
-    };
+    if (/generativelanguage\.googleapis\.com/i.test(normalizedImage)) {
+      const safeUrl = assertSafeExternalUrl(normalizedImage);
+      return {
+        fileData: { fileUri: safeUrl, mimeType: defaultMimeType },
+      };
+    }
+
+    try {
+      const safeUrl = assertSafeExternalUrl(normalizedImage);
+      const res = await fetch(safeUrl, {
+        headers: { "User-Agent": "AUMS-AI-Service/1.0" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        console.warn(
+          `[geminiAdapter] Failed to download image from URL: ${safeUrl} (HTTP ${res.status})`,
+        );
+        return null;
+      }
+      const arrayBuffer = await res.arrayBuffer();
+      const mimeType = res.headers.get("content-type") || defaultMimeType;
+      const data = Buffer.from(arrayBuffer).toString("base64");
+      return {
+        inlineData: {
+          data,
+          mimeType,
+        },
+      };
+    } catch (fetchErr) {
+      console.warn(
+        `[geminiAdapter] Could not download image URL: ${normalizedImage} - ${fetchErr.message}`,
+      );
+      return null;
+    }
   }
 
   const data = sanitizeBase64(normalizedImage);
@@ -222,7 +252,7 @@ async function generateJson(systemPrompt, input, options = {}) {
       : `<user_data>\n${serializedInput}\n</user_data>`;
   const parts = [{ text }];
   for (const image of options.images || []) {
-    const part = imagePart(image, options.defaultMimeType);
+    const part = await imagePart(image, options.defaultMimeType);
     if (part) parts.push(part);
   }
 
@@ -274,6 +304,24 @@ async function requestGeminiJson(model, parts, options) {
 }
 
 /**
+ * Strips custom local validation attributes (e.g. normalizePercentage, integer)
+ * from the schema before sending it to the Google Gemini API.
+ *
+ * @param {*} schema - Raw schema definition.
+ * @returns {*} Cleaned OpenAPI-compatible schema for Gemini.
+ */
+function sanitizeGeminiSchema(schema) {
+  if (Array.isArray(schema)) return schema.map(sanitizeGeminiSchema);
+  if (!schema || typeof schema !== "object") return schema;
+  const cleaned = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === "normalizePercentage" || key === "integer") continue;
+    cleaned[key] = sanitizeGeminiSchema(value);
+  }
+  return cleaned;
+}
+
+/**
  * Executes a single generateContent call to Gemini within a timeout wrapper.
  *
  * @param {string} model - Target Gemini model name.
@@ -305,7 +353,7 @@ async function requestGeminiJsonOnce(model, parts, options) {
           ? { systemInstruction: options.systemPrompt }
           : {}),
         ...(options.responseSchema
-          ? { responseSchema: options.responseSchema }
+          ? { responseSchema: sanitizeGeminiSchema(options.responseSchema) }
           : {}),
       },
       signal: controller.signal,

@@ -90,7 +90,6 @@ async function runVerificationAgent(beforeImg, afterImg, metadata = {}) {
     throw new TypeError("Verification requires both before and after images");
   }
   try {
-    const imageParts = [imagePart(beforeImage), imagePart(afterImage)];
     const userData = {
       reportDescription: details.reportDescription || details.description || "",
       auditNotes: details.auditNotes || "",
@@ -102,7 +101,7 @@ async function runVerificationAgent(beforeImg, afterImg, metadata = {}) {
       {
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         responseSchema,
-        images: imageParts,
+        images: [beforeImage, afterImage],
       },
     );
   } catch (error) {

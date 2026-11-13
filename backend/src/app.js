@@ -50,15 +50,23 @@ app.use(helmet());
 app.use(express.json({ limit: "2mb" }));
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 30,
+  limit: 500,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many request, try again later.",
+  },
 });
 const protectedLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 60,
+  limit: 1000,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many request, try again later.",
+  },
 });
 /**
  * Health check endpoint reporting service availability, database connectivity, and process uptime.
