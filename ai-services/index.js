@@ -1,5 +1,12 @@
 require("dotenv").config();
 
+// Clean surrounding quotes from environment variables injected by Docker / Cloud platforms
+for (const [key, value] of Object.entries(process.env)) {
+  if (typeof value === "string") {
+    process.env[key] = value.trim().replace(/^["']+|["']+$/g, "");
+  }
+}
+
 const express = require("express");
 const cors = require("cors");
 const { port } = require("./src/config/llm.config");
