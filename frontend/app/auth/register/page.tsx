@@ -72,7 +72,7 @@ export default function RegisterPage() {
       <div className="absolute inset-0 z-0 flex h-full w-full flex-col overflow-hidden md:flex-row">
         <div className="relative h-[40vh] w-full md:h-full md:w-1/2">
           <Image
-            src="/ilustrasi.png"
+            src="/Ilustrasi.png"
             alt="logo ilustrasi"
             fill
             priority
@@ -83,7 +83,7 @@ export default function RegisterPage() {
 
         <div className="relative hidden h-full w-1/2 md:block">
           <Image
-            src="/ilustrasi.png"
+            src="/Ilustrasi.png"
             alt="logo kanan"
             fill
             priority
