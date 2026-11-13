@@ -1,5 +1,6 @@
-export const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+export const BACKEND_URL = (
+  process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000"
+).replace(/\/+$/, "");
 
 export class ApiError extends Error {
   status: number;
@@ -24,7 +25,10 @@ interface ErrorPayload {
   errors?: { message: string }[];
 }
 
-function extractMessage(payload: ErrorPayload | null, fallback: string): string {
+function extractMessage(
+  payload: ErrorPayload | null,
+  fallback: string,
+): string {
   if (payload?.errors?.length) return payload.errors[0].message;
   return payload?.message || fallback;
 }
@@ -44,7 +48,8 @@ export async function apiRequest<T = unknown>(
   });
 
   const headers: Record<string, string> = {};
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const isFormData =
+    typeof FormData !== "undefined" && body instanceof FormData;
   if (body && !isFormData) headers["Content-Type"] = "application/json";
 
   if (auth) {
@@ -57,10 +62,17 @@ export async function apiRequest<T = unknown>(
     response = await fetch(url, {
       method,
       headers,
-      body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
+      body: body
+        ? isFormData
+          ? (body as FormData)
+          : JSON.stringify(body)
+        : undefined,
     });
   } catch {
-    throw new ApiError("Tidak dapat terhubung ke server. Periksa koneksi Anda.", 0);
+    throw new ApiError(
+      "Tidak dapat terhubung ke server. Periksa koneksi Anda.",
+      0,
+    );
   }
 
   const payload = await response.json().catch(() => null);
