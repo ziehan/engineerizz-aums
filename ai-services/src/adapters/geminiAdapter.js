@@ -2,11 +2,16 @@ const { GoogleGenAI } = require("@google/genai");
 const { assertSafeExternalUrl } = require("../utils/ssrfGuard");
 
 const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_FALLBACK_MODELS = [
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
+];
 const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 const DEFAULT_EMBEDDING_DIMENSIONS = 768;
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_OUTPUT_TOKENS = 1000;
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 1;
 const RETRYABLE_STATUS_CODES = new Set([429, 503]);
 
 /**
@@ -238,12 +243,19 @@ async function imagePart(image, defaultMimeType = "image/jpeg") {
 async function generateJson(systemPrompt, input, options = {}) {
   const primaryModel =
     options.model || process.env.GEMINI_MODEL || DEFAULT_MODEL;
-  const fallbackModel =
-    options.fallbackModel || process.env.GEMINI_FALLBACK_MODEL;
+  const rawFallback =
+    options.fallbackModel || process.env.GEMINI_FALLBACK_MODEL || "";
+  const envFallbackModels = String(rawFallback)
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
   const models = [
-    primaryModel,
-    fallbackModel && fallbackModel !== primaryModel ? fallbackModel : null,
-  ].filter(Boolean);
+    ...new Set(
+      [primaryModel, ...envFallbackModels, ...DEFAULT_FALLBACK_MODELS].filter(
+        Boolean,
+      ),
+    ),
+  ];
   const serializedInput =
     typeof input === "string" ? input : JSON.stringify(input);
   const text =
