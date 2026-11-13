@@ -279,7 +279,7 @@ async function generateJson(systemPrompt, input, options = {}) {
       lastError = error;
       if (index < models.length - 1) {
         console.warn(
-          `[aums-ai-services] Gemini model ${model} failed; trying fallback ${models[index + 1]}.`,
+          `[aums-ai-services] Gemini model ${model} failed (${getErrorStatus(error) || "ERR"}: ${error?.message || error}); trying fallback ${models[index + 1]}.`,
         );
         continue;
       }
