@@ -98,25 +98,43 @@ class ReportRepository {
    * @returns {Promise<Array<Object>>} Candidate reports.
    */
   async findDeduplicationCandidates(report) {
+    const lat = Number(report.latitude);
+    const lng = Number(report.longitude);
+    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
     const latitudeDelta = 0.01;
     const longitudeDelta = 0.01;
+    const excludeId = report.id ? { not: report.id } : undefined;
+
+    if (hasCoordinates) {
+      const spatialCandidates = await prisma.report.findMany({
+        where: {
+          ...(excludeId ? { id: excludeId } : {}),
+          isDuplicate: false,
+          status: { in: ["Pending", "Approved"] },
+          latitude: {
+            gte: lat - latitudeDelta,
+            lte: lat + latitudeDelta,
+          },
+          longitude: {
+            gte: lng - longitudeDelta,
+            lte: lng + longitudeDelta,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      });
+
+      if (spatialCandidates.length > 0) {
+        return spatialCandidates;
+      }
+    }
+
     return prisma.report.findMany({
       where: {
+        ...(excludeId ? { id: excludeId } : {}),
         isDuplicate: false,
         status: { in: ["Pending", "Approved"] },
-        OR: [
-          { category: report.category },
-          {
-            latitude: {
-              gte: report.latitude - latitudeDelta,
-              lte: report.latitude + latitudeDelta,
-            },
-            longitude: {
-              gte: report.longitude - longitudeDelta,
-              lte: report.longitude + longitudeDelta,
-            },
-          },
-        ],
+        ...(report.category ? { category: report.category } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: 10,
@@ -203,6 +221,12 @@ class ReportRepository {
    * @returns {Promise<Object>} Updated action plan record.
    */
   async updateActionPlan(reportId, data) {
+    const existing = await prisma.actionPlan.findUnique({
+      where: { reportId },
+    });
+    if (!existing) {
+      return null;
+    }
     return prisma.actionPlan.update({ where: { reportId }, data });
   }
 

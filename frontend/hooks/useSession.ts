@@ -8,7 +8,7 @@ export default function useSession(): SessionState {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true); 
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const tokenFromLocal = localStorage.getItem("token");
@@ -23,19 +23,18 @@ export default function useSession(): SessionState {
 
     const fetchUser = async () => {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+        const baseUrl =
+          process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
 
         const response = await fetch(`${baseUrl}/api/auth/me`, {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${tokenFromLocal}`,
-            "Content-Type": "application/json"
-          }
+            Authorization: `Bearer ${tokenFromLocal}`,
+            "Content-Type": "application/json",
+          },
         });
 
-        const result = await response.json();
-
-        if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("token");
           localStorage.removeItem("user");
           alert("Sesi Anda telah berakhir, silakan login kembali.");
@@ -43,7 +42,37 @@ export default function useSession(): SessionState {
           return;
         }
 
-        setUser(result.data);
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          const cachedUser = localStorage.getItem("user");
+          if (cachedUser) {
+            try {
+              setUser(JSON.parse(cachedUser));
+            } catch {
+              // ignore invalid cached JSON
+            }
+          }
+          return;
+        }
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          const cachedUser = localStorage.getItem("user");
+          if (cachedUser) {
+            try {
+              setUser(JSON.parse(cachedUser));
+            } catch {
+              // ignore
+            }
+          }
+          return;
+        }
+
+        if (result.data) {
+          setUser(result.data);
+          localStorage.setItem("user", JSON.stringify(result.data));
+        }
       } catch (error) {
         console.error("Gagal mengambil data user:", error);
       } finally {
@@ -52,7 +81,7 @@ export default function useSession(): SessionState {
     };
 
     fetchUser();
-  }, [router]); 
+  }, [router]);
 
   return { user, isLoading, token };
 }

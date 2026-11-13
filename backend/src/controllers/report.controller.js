@@ -492,7 +492,106 @@ class ReportController {
         response: aiData,
         executionTimeMs: response?.executionTimeMs || null,
       });
-      return res.status(201).json({ success: true, data: report });
+
+      const parentReportId =
+        aiData.parentReportId ||
+        candidates.find((c) => c.id === aiData.parentReportId)?.id ||
+        (aiData.isDuplicate ? candidates[0]?.id : null);
+
+      if (
+        aiData.isDuplicate === true &&
+        parentReportId &&
+        candidates.some((c) => c.id === parentReportId)
+      ) {
+        const duplicate = await this.repository.markAsDuplicate(
+          report.id,
+          parentReportId,
+        );
+        await this.repository.addAuditLog(report.id, "REPORT_DUPLICATE", {
+          parentReportId,
+          reasoning: aiData.reasoning || "Terdeteksi duplikat oleh AI Intake",
+        });
+        const finalDuplicateReport = await this.repository.findById(report.id);
+        return res.status(201).json({
+          success: true,
+          data: finalDuplicateReport || duplicate,
+          notice:
+            "Laporan Anda dicatat sebagai duplikat dan memperkuat urgensi penanganan masalah ini.",
+        });
+      }
+
+      if (aiData.isValid !== false) {
+        try {
+          const similarReports = this.ragService
+            ? await this.ragService.getSimilarReports(report)
+            : [];
+          const ragContext = this.ragService
+            ? this.ragService.formatContext(similarReports)
+            : [];
+          const planResponse = await this.aiService.runPlanningAgent(
+            report,
+            ragContext,
+          );
+          const planData = planResponse?.data?.data || planResponse?.data || {};
+
+          const actionPlan = await this.repository.upsertActionPlan(report.id, {
+            targetAgency: String(planData.targetAgency || "Dinas Terkait"),
+            confidenceScore: this.numberOr(planData.confidenceScore, 0.85),
+            estimatedDays: Math.max(
+              0,
+              Math.trunc(this.numberOr(planData.estimatedDays, 0)),
+            ),
+            actionSteps: Array.isArray(planData.actionSteps)
+              ? planData.actionSteps
+              : [],
+            confidenceMetadata: {
+              agencyConfidence: this.numberOr(planData.agencyConfidence, 0),
+              planConfidence: this.numberOr(planData.planConfidence, 0),
+              dispatchReason:
+                planData.dispatchReason || planData.dispatchNotes || null,
+              ragContext,
+            },
+          });
+
+          const planningPayload = {
+            description: report.description,
+            category: report.category,
+            ragContext: ragContext || [],
+          };
+          void this.recordAiAudit({
+            reportId: report.id,
+            agentName: "PLANNING_AGENT",
+            action: "AI_PLANNING_COMPLETED",
+            details: `AI Planning completed for target agency: ${actionPlan.targetAgency}`,
+            payload: planningPayload,
+            response: {
+              targetAgency: planData.targetAgency || actionPlan.targetAgency,
+              actionSteps: planData.actionSteps || actionPlan.actionSteps,
+              estimatedDays: planData.estimatedDays || actionPlan.estimatedDays,
+              dispatchReason:
+                planData.dispatchReason || planData.dispatchNotes || null,
+              ...planData,
+            },
+            confidenceScore: actionPlan.confidenceScore,
+          });
+
+          await this.repository.addAuditLog(report.id, "AI_PLANNED", {
+            response: planData,
+            targetAgency: actionPlan.targetAgency,
+            estimatedDays: actionPlan.estimatedDays,
+          });
+        } catch (planError) {
+          console.warn(
+            "[ReportController] Automated planning failed during intake:",
+            planError.message,
+          );
+        }
+      }
+
+      const finalReport = await this.repository.findById(report.id);
+      return res
+        .status(201)
+        .json({ success: true, data: finalReport || report });
     } catch (error) {
       return next(error);
     }
@@ -521,6 +620,82 @@ class ReportController {
       const report = await this.getPipelineReport(
         req.params.id || req.body?.reportId,
       );
+
+      const hasManualPlan =
+        req.body &&
+        (req.body.targetAgency !== undefined ||
+          req.body.agency !== undefined ||
+          req.body.estimatedDays !== undefined ||
+          req.body.days !== undefined ||
+          req.body.actionSteps !== undefined ||
+          req.body.detail !== undefined);
+
+      if (hasManualPlan) {
+        const targetAgency = String(
+          req.body.targetAgency ||
+            req.body.agency ||
+            report.actionPlan?.targetAgency ||
+            "Dinas Terkait",
+        ).trim();
+        const estimatedDays = Math.max(
+          0,
+          Math.trunc(
+            this.numberOr(
+              req.body.estimatedDays ?? req.body.days,
+              report.actionPlan?.estimatedDays ?? 0,
+            ),
+          ),
+        );
+
+        let actionSteps = [];
+        if (Array.isArray(req.body.actionSteps)) {
+          actionSteps = req.body.actionSteps
+            .map((step) => String(step).trim())
+            .filter(Boolean);
+        } else if (typeof req.body.detail === "string") {
+          actionSteps = req.body.detail
+            .split("\n")
+            .map((step) => step.trim())
+            .filter(Boolean);
+        } else if (Array.isArray(report.actionPlan?.actionSteps)) {
+          actionSteps = report.actionPlan.actionSteps;
+        }
+
+        const existingMetadata =
+          report.actionPlan?.confidenceMetadata &&
+          typeof report.actionPlan.confidenceMetadata === "object"
+            ? report.actionPlan.confidenceMetadata
+            : {};
+
+        const actionPlan = await this.repository.upsertActionPlan(report.id, {
+          targetAgency,
+          confidenceScore: this.numberOr(
+            report.actionPlan?.confidenceScore,
+            1.0,
+          ),
+          estimatedDays,
+          actionSteps,
+          confidenceMetadata: {
+            ...existingMetadata,
+            updatedByOfficer:
+              req.user?.name || req.user?.email || req.user?.userId || true,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+
+        await this.repository.addAuditLog(
+          report.id,
+          "OFFICER_PLAN_UPDATED",
+          `Rencana penanganan disusun/diperbarui oleh petugas untuk instansi: ${targetAgency} (estimasi ${estimatedDays} hari)`,
+        );
+
+        const updated = await this.repository.findById(report.id);
+        return res.json({
+          success: true,
+          data: { report: updated || report, actionPlan },
+        });
+      }
+
       const similarReports = await this.ragService.getSimilarReports(report);
       const ragContext = this.ragService.formatContext(similarReports);
       const response = await this.aiService.runPlanningAgent(

@@ -27,6 +27,8 @@ export interface AuditLog {
   action: string;
   details: string;
   agentName?: string | null;
+  payload?: Record<string, unknown> | null;
+  response?: Record<string, unknown> | null;
   confidenceScore?: number | null;
   timestamp: string;
 }

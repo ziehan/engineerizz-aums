@@ -17,9 +17,15 @@ export async function fetchReport(id: string): Promise<Report> {
   return res.data;
 }
 
-/** POST /reports/plan/:id : meminta backend menyusun action plan. */
-export async function requestPlan(id: string) {
-  return apiRequest(`${BASE}/plan/${id}`, { method: "POST", body: {} });
+export interface PlanInput {
+  targetAgency?: string;
+  estimatedDays?: number;
+  actionSteps?: string[];
+}
+
+/** POST /reports/plan/:id : menyimpan atau menyusun action plan laporan. */
+export async function requestPlan(id: string, body: PlanInput = {}) {
+  return apiRequest(`${BASE}/plan/${id}`, { method: "POST", body });
 }
 
 /** POST /reports/:id/verify : mengirim bukti perbaikan (foto + GPS). */

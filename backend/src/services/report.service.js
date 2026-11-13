@@ -308,6 +308,20 @@ class ReportService {
     // Sensitive NIK of other citizens, raw AI payloads, technical confidence scores,
     // and internal agent audit logs are completely masked.
     const targetAgency = report.actionPlan?.targetAgency || null;
+    const publicActionPlan = report.actionPlan
+      ? {
+          id: report.actionPlan.id,
+          reportId: report.actionPlan.reportId,
+          targetAgency: report.actionPlan.targetAgency,
+          estimatedDays: report.actionPlan.estimatedDays,
+          actionSteps: Array.isArray(report.actionPlan.actionSteps)
+            ? report.actionPlan.actionSteps
+            : [],
+          approvedBy: report.actionPlan.approvedBy || null,
+          approvedAt: report.actionPlan.approvedAt || null,
+          createdAt: report.actionPlan.createdAt,
+        }
+      : null;
     return {
       id: report.id,
       title: report.title,
@@ -323,6 +337,7 @@ class ReportService {
       officerNotes: report.officerNotes || null,
       assignedOfficerName: report.assignedOfficerName || null,
       targetAgency,
+      actionPlan: publicActionPlan,
       resolvedAt: report.resolvedAt || null,
       isDuplicate: report.isDuplicate ?? false,
       duplicateCount: report.duplicateCount ?? 0,

@@ -5,7 +5,9 @@ try {
   // Optional if @supabase/supabase-js is not installed locally
 }
 
-const BUCKET_NAME = process.env.SUPABASE_STORAGE_BUCKET || "aums-media";
+const BUCKET_NAME = String(process.env.SUPABASE_STORAGE_BUCKET || "aums-media")
+  .trim()
+  .replace(/^["']+|["']+$/g, "");
 
 /**
  * Resolves Supabase client instance using environment variables if available.
@@ -13,11 +15,20 @@ const BUCKET_NAME = process.env.SUPABASE_STORAGE_BUCKET || "aums-media";
  * @returns {import("@supabase/supabase-js").SupabaseClient|null}
  */
 function getSupabaseClient() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey =
+  const supabaseUrl = process.env.SUPABASE_URL
+    ? String(process.env.SUPABASE_URL)
+        .trim()
+        .replace(/^["']+|["']+$/g, "")
+    : null;
+  const rawKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.SUPABASE_KEY;
+  const supabaseKey = rawKey
+    ? String(rawKey)
+        .trim()
+        .replace(/^["']+|["']+$/g, "")
+    : null;
 
   if (!supabaseUrl || !supabaseKey || !createClient) {
     return null;
