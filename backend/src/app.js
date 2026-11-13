@@ -30,6 +30,7 @@ const authRoutes = require("./routes/auth.routes");
 const repository = new ReportRepository();
 
 const app = express();
+app.set("trust proxy", 1);
 const mapsService = new MapsService();
 const geoService = new GeoService();
 const aiService = new AiIntegrationService();

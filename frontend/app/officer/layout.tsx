@@ -12,7 +12,11 @@ const LINKS = [
 
 export default function OfficerLayout({ children }: { children: ReactNode }) {
   return (
-    <RoleLayout allowedRoles={["FIELD_OFFICER"]} links={LINKS} homeHref="/officer/dashboard">
+    <RoleLayout
+      allowedRoles={["FIELD_OFFICER"]}
+      links={LINKS}
+      homeHref="/officer/dashboard"
+    >
       {children}
     </RoleLayout>
   );
