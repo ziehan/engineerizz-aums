@@ -5,13 +5,11 @@ const LINKS = [
   { label: "Dashboard", href: "/officer/dashboard" },
   {
     label: "Tugas Saya",
-    activeLabel: "Lacak Aduan",
     href: "/officer/tasks",
     matchPrefix: "/officer/reports",
   },
 ];
 
-/** Kerangka seluruh halaman petugas lapangan (khusus role FIELD_OFFICER). */
 export default function OfficerLayout({ children }: { children: ReactNode }) {
   return (
     <RoleLayout allowedRoles={["FIELD_OFFICER"]} links={LINKS} homeHref="/officer/dashboard">
