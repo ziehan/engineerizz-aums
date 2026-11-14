@@ -55,8 +55,75 @@ test("AUMS registration hashes passwords and omits them from responses", async (
 
   assert.equal(res.statusCode, 201);
   assert.equal(input.email, "citizen@example.com");
+  assert.equal(input.role, "CITIZEN");
+  assert.equal(input.nip, null);
+  assert.equal(input.departmentId, null);
   assert.notEqual(input.password, "password123");
   assert.equal(res.body.data.password, undefined);
+});
+
+test("AUMS public registration rejects non-CITIZEN roles and strips staff fields", async () => {
+  for (const role of ["ADMIN", "CRM_OFFICER", "FIELD_OFFICER"]) {
+    let created = false;
+    const controller = new AuthController({
+      prisma: {
+        user: {
+          create: async () => {
+            created = true;
+            return {};
+          },
+        },
+      },
+    });
+    const res = response();
+    await controller.register(
+      {
+        body: {
+          email: "attacker@example.com",
+          name: "Attacker",
+          password: "password123",
+          role,
+        },
+      },
+      res,
+      assert.fail,
+    );
+
+    assert.equal(res.statusCode, 400);
+    assert.equal(created, false);
+  }
+
+  let capturedData;
+  const controller = new AuthController({
+    prisma: {
+      user: {
+        create: async ({ data }) => {
+          capturedData = data;
+          return { id: "user-2", ...data };
+        },
+      },
+    },
+  });
+  const res = response();
+  await controller.register(
+    {
+      body: {
+        email: "warga@example.com",
+        name: "Warga",
+        password: "password123",
+        role: "CITIZEN",
+        nip: "199001012020011001",
+        departmentId: "550e8400-e29b-41d4-a716-446655440000",
+      },
+    },
+    res,
+    assert.fail,
+  );
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(capturedData.role, "CITIZEN");
+  assert.equal(capturedData.nip, null);
+  assert.equal(capturedData.departmentId, null);
 });
 
 test("AUMS login returns a signed token and public user profile", async () => {

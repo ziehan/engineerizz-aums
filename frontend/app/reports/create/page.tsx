@@ -9,8 +9,8 @@ import { getCoordinates } from "@/lib/getCoordinate";
 import { ButtonRed } from "@/components/buttons/button-red";
 import dynamic from "next/dynamic";
 import { Navbar, type NavLink } from "@/components/layout/navbar";
-import { SessionState } from "@/lib/types";
-import useSession from "@/hooks/useSession";
+import { Loading } from "@/components/loading";
+import useRoleGuard from "@/hooks/useRoleGuard";
 import { PhotoPicker } from "@/components/reports/PhotoPicker";
 
 const NAV_LINKS: NavLink[] = [{ label: "Home", href: "/", matchPrefix: "/" }];
@@ -26,7 +26,7 @@ const LocationPicker = dynamic(() => import("./LocationPicker"), {
 
 export default function CreateReportPage() {
   const router = useRouter();
-  const { user, isLoading, token }: SessionState = useSession();
+  const { user, isLoading, isAllowed } = useRoleGuard(["CITIZEN"]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Jalan Rusak");
@@ -41,8 +41,9 @@ export default function CreateReportPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isAllowed) return;
     handleFetchLocation();
-  }, []);
+  }, [isAllowed]);
 
   const fetchAddress = async (lat: number, lng: number) => {
     try {
@@ -104,6 +105,7 @@ export default function CreateReportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAllowed) return;
     if (
       !title ||
       !description ||
@@ -153,6 +155,10 @@ export default function CreateReportPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading || !user || !isAllowed) {
+    return <Loading text="Memuat sesi..." />;
+  }
 
   return (
     <>

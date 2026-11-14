@@ -8,13 +8,9 @@ const registerSchema = z.object({
   email: z.string().trim().email().max(254),
   name: z.string().trim().min(1).max(150),
   password: z.string().min(8).max(128),
-  role: z
-    .enum(["CITIZEN", "FIELD_OFFICER", "CRM_OFFICER", "ADMIN"])
-    .default("CITIZEN"),
+  role: z.literal("CITIZEN").optional().default("CITIZEN"),
   nik: z.string().trim().max(50).optional(),
-  nip: z.string().trim().max(50).optional(),
   phone: z.string().trim().max(50).optional(),
-  departmentId: z.string().uuid().optional(),
 });
 
 const officerSchema = z.object({
@@ -62,11 +58,9 @@ const DEFAULT_DEPARTMENTS = [
  * @property {string} email - Unique email address.
  * @property {string} name - Full user name.
  * @property {string} password - Raw password to hash with bcrypt (min 8 chars).
- * @property {"CITIZEN"|"FIELD_OFFICER"|"CRM_OFFICER"|"ADMIN"} [role="CITIZEN"] - Assigned system role.
+ * @property {"CITIZEN"} [role="CITIZEN"] - Assigned system role.
  * @property {string} [nik] - Nomor Induk Kependudukan (16 digits).
- * @property {string} [nip] - Nomor Induk Pegawai for civil servants.
  * @property {string} [phone] - Contact phone number.
- * @property {string} [departmentId] - UUID of associated SKPD department.
  */
 
 /**
@@ -187,11 +181,11 @@ class AuthController {
           email: input.email.toLowerCase(),
           name: input.name,
           password,
-          role: input.role,
+          role: "CITIZEN",
           nik: input.nik || null,
-          nip: input.nip || null,
+          nip: null,
           phone: input.phone || null,
-          departmentId: input.departmentId || null,
+          departmentId: null,
         },
         include: { department: true },
       });
