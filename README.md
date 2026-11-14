@@ -86,11 +86,12 @@ Berdasarkan pengukuran menggunakan simulasi data operasional perkotaan, AUMS men
 | :--- | :--- |
 | **Ketua Tim** | Naziehan Labieb |
 | **Anggota** | Dimar Ilham Tamara |
-| **Anggota** | Raihan Muhammad Nafis Al-Kautsar |
 | **Anggota** | Naufal Rahman |
+| **Anggota** | Raihan Muhammad Nafis Al-Kautsar |
+
 
 <a href="https://github.com/ziehan/engineerizz-aums/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=ziehan/engineerizz-aums&max=101" />
+  <img src="https://contrib.rocks/image?repo=ziehan/engineerizz-aums&max=101" /> <img width=70 style="border-radius:100%; border: 1px solid white" src="https://avatars.githubusercontent.com/u/188180556?v=4"/>
 </a>
 
 ## 📚 Referensi
