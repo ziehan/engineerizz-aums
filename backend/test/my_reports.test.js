@@ -1,9 +1,17 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const http = require("node:http");
+const express = require("express");
 const jwt = require("jsonwebtoken");
+const env = require("../src/config/env.config");
 const ReportService = require("../src/services/report.service");
 const ReportController = require("../src/controllers/report.controller");
-const { optionalAuthenticate } = require("../src/middlewares/auth.middleware");
+const reportRoutes = require("../src/routes/report.routes");
+const {
+  authenticate,
+  optionalAuthenticate,
+  requireRoles,
+} = require("../src/middlewares/auth.middleware");
 
 function response() {
   return {
@@ -166,4 +174,200 @@ test("optionalAuthenticate gracefully continues without req.user when header is 
 
   assert.equal(nextCalled, true);
   assert.equal(req.user, undefined);
+});
+
+test("ReportController.create ignores req.body.reporterId spoofing", async () => {
+  let capturedInput = null;
+  const controller = new ReportController({
+    reportService: {
+      createReport: async (input) => {
+        capturedInput = input;
+        return { id: "created-2", ...input };
+      },
+    },
+  });
+
+  const res = response();
+  await controller.create(
+    {
+      user: { userId: "real-user-1" },
+      body: {
+        title: "Jalan Berlubang",
+        description: "Bahaya",
+        category: "Jalan",
+        reporterId: "spoofed-user-99",
+      },
+    },
+    res,
+    assert.fail,
+  );
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(capturedInput.reporterId, "real-user-1");
+
+  const resNoUser = response();
+  await controller.create(
+    {
+      body: {
+        title: "Jalan Berlubang",
+        description: "Bahaya",
+        category: "Jalan",
+        reporterId: "spoofed-user-99",
+      },
+    },
+    resNoUser,
+    assert.fail,
+  );
+
+  assert.equal(capturedInput.reporterId, undefined);
+});
+
+test("ReportController.intake uses req.user.userId and ignores req.body.reporterId", async () => {
+  let savedReportData = null;
+  const controller = new ReportController({
+    reportService: {
+      recordAiAudit: async () => {},
+    },
+    repository: {
+      findDeduplicationCandidates: async () => [],
+      createWithEmbedding: async (data) => {
+        savedReportData = data;
+        return { id: "intake-1", ...data };
+      },
+      addAuditLog: async () => {},
+      findById: async (id) => ({ id, ...savedReportData }),
+    },
+    geoService: {
+      reverseGeocode: async () => ({ displayName: "Jl. Sudirman" }),
+    },
+    aiService: {
+      runIntakeAgent: async () => ({
+        data: { data: { isValid: true, priorityScore: 50 } },
+      }),
+      runPlanningAgent: async () => ({ data: { data: {} } }),
+    },
+  });
+
+  const res = response();
+  await controller.intake(
+    {
+      user: { userId: "real-citizen-1" },
+      body: {
+        title: "Trotoar Rusak",
+        description: "Pecah",
+        category: "Infrastruktur",
+        latitude: "-6.2",
+        longitude: "106.8",
+        reporterId: "spoofed-citizen-99",
+      },
+    },
+    res,
+    assert.fail,
+  );
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(savedReportData.reporterId, "real-citizen-1");
+});
+
+test("Report intake and create routes enforce authenticated CITIZEN role", async () => {
+  let intakeCalls = 0;
+  let createCalls = 0;
+  const stubController = {
+    intake: (_req, res) => {
+      intakeCalls += 1;
+      res.status(201).json({ success: true });
+    },
+    create: (_req, res) => {
+      createCalls += 1;
+      res.status(201).json({ success: true });
+    },
+    getMyReports: (_req, res) => res.json({ data: [] }),
+    list: (_req, res) => res.json({ data: [] }),
+    deleteDuplicate: (_req, res) => res.json({}),
+    get: (_req, res) => res.json({}),
+    delete: (_req, res) => res.json({}),
+    approve: (_req, res) => res.json({}),
+    verify: (_req, res) => res.json({}),
+    plan: (_req, res) => res.json({}),
+  };
+  const passThrough = (_req, _res, next) => next();
+  const app = express();
+  app.use(express.json());
+  app.use(
+    "/reports",
+    reportRoutes(
+      stubController,
+      passThrough,
+      stubController,
+      { uploadImage: passThrough, processImage: passThrough },
+      passThrough,
+      authenticate,
+      requireRoles("CITIZEN", "FIELD_OFFICER", "CRM_OFFICER", "ADMIN"),
+      requireRoles("FIELD_OFFICER", "CRM_OFFICER", "ADMIN"),
+      requireRoles("CRM_OFFICER", "ADMIN"),
+      passThrough,
+      passThrough,
+      optionalAuthenticate,
+      requireRoles("CITIZEN"),
+    ),
+  );
+
+  const dispatchPost = (url, headers = {}) =>
+    new Promise((resolve, reject) => {
+      const req = new http.IncomingMessage(null);
+      req.method = "POST";
+      req.url = url;
+      req.headers = Object.fromEntries(
+        Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]),
+      );
+      req.push(null);
+
+      const res = new http.ServerResponse(req);
+      const chunks = [];
+      res.write = (chunk) => {
+        if (chunk)
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        return true;
+      };
+      res.end = (chunk) => {
+        if (chunk)
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        resolve({
+          status: res.statusCode,
+          body: Buffer.concat(chunks).toString("utf8"),
+        });
+      };
+
+      app.handle(req, res, (err) => {
+        if (err) reject(err);
+      });
+    });
+
+  for (const path of ["/intake", "/"]) {
+    const unauthRes = await dispatchPost(`/reports${path}`);
+    assert.equal(unauthRes.status, 401);
+
+    for (const role of ["ADMIN", "CRM_OFFICER", "FIELD_OFFICER"]) {
+      const token = jwt.sign(
+        { userId: `user-${role}`, email: `${role}@aums.test`, role },
+        env.jwtSecret,
+      );
+      const forbiddenRes = await dispatchPost(`/reports${path}`, {
+        Authorization: `Bearer ${token}`,
+      });
+      assert.equal(forbiddenRes.status, 403);
+    }
+
+    const citizenToken = jwt.sign(
+      { userId: "citizen-1", email: "warga@aums.test", role: "CITIZEN" },
+      env.jwtSecret,
+    );
+    const okRes = await dispatchPost(`/reports${path}`, {
+      Authorization: `Bearer ${citizenToken}`,
+    });
+    assert.equal(okRes.status, 201);
+  }
+
+  assert.equal(intakeCalls, 1);
+  assert.equal(createCalls, 1);
 });

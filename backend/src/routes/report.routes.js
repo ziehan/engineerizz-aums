@@ -19,6 +19,7 @@ const express = require("express");
  * @param {Function} [publicLimiter] - Rate limiter for public endpoints.
  * @param {Function} [protectedLimiter] - Rate limiter for protected endpoints.
  * @param {Function} [optionalAuthMiddleware] - Optional JWT authentication middleware for attaching user context.
+ * @param {Function} [citizenOnly] - Guard allowing CITIZEN only.
  * @returns {import("express").Router} Configured Express router.
  */
 module.exports = (
@@ -34,13 +35,15 @@ module.exports = (
   publicLimiter = (_req, _res, next) => next(),
   protectedLimiter = (_req, _res, next) => next(),
   optionalAuthMiddleware = (_req, _res, next) => next(),
+  citizenOnly = authMiddleware,
 ) => {
   const router = express.Router();
   if (pipelineController) {
     router.post(
       "/intake",
-      publicLimiter,
-      optionalAuthMiddleware,
+      protectedLimiter,
+      authMiddleware,
+      citizenOnly,
       imageMiddleware.uploadImage,
       imageMiddleware.processImage,
       validatePayload,
@@ -73,8 +76,9 @@ module.exports = (
   }
   router.post(
     "/",
-    publicLimiter,
-    optionalAuthMiddleware,
+    protectedLimiter,
+    authMiddleware,
+    citizenOnly,
     validatePayload,
     controller.create,
   );

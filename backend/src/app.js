@@ -133,6 +133,7 @@ app.use(
     publicLimiter,
     protectedLimiter,
     optionalAuthenticate,
+    requireRoles("CITIZEN"),
   ),
 );
 app.use(
@@ -150,6 +151,7 @@ app.use(
     publicLimiter,
     protectedLimiter,
     optionalAuthenticate,
+    requireRoles("CITIZEN"),
   ),
 );
 app.use("/api/v1/maps", mapsRoutes(new MapsController(mapsService)));

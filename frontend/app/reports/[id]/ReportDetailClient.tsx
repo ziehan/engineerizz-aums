@@ -2,11 +2,10 @@
 
 import { useState, useEffect, use } from "react";
 import Image from "next/image";
-import useSession from "@/hooks/useSession";
+import useRoleGuard from "@/hooks/useRoleGuard";
 import { Loading } from "@/components/loading";
 import dynamic from "next/dynamic";
 import { Navbar, type NavLink } from "@/components/layout/navbar";
-import { SessionState } from "@/lib/types";
 
 const NAV_LINKS: NavLink[] = [{ label: "Home", href: "/", matchPrefix: "/" }];
 
@@ -20,12 +19,17 @@ interface ClientProps {
 }
 
 export default function ReportDetailClient({ id }: ClientProps) {
-  const { user, token, isLoading: isSessionLoading } = useSession();
+  const {
+    user,
+    token,
+    isLoading: isSessionLoading,
+    isAllowed,
+  } = useRoleGuard(["CITIZEN"]);
   const [report, setReport] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (isSessionLoading) return;
+    if (isSessionLoading || !isAllowed) return;
 
     const fetchReport = async () => {
       const baseUrl =
@@ -56,9 +60,9 @@ export default function ReportDetailClient({ id }: ClientProps) {
     };
 
     fetchReport();
-  }, [id, token, isSessionLoading]);
+  }, [id, token, isSessionLoading, isAllowed]);
 
-  if (isSessionLoading || isLoading) {
+  if (isSessionLoading || !user || !isAllowed || isLoading) {
     return <Loading text="Memuat detail laporan..." />;
   }
 

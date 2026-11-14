@@ -10,7 +10,11 @@ const LINKS = [
 /** Kerangka seluruh halaman admin */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <RoleLayout allowedRoles={["ADMIN"]} links={LINKS} homeHref="/admin/dashboard">
+    <RoleLayout
+      allowedRoles={["ADMIN", "CRM_OFFICER"]}
+      links={LINKS}
+      homeHref="/admin/dashboard"
+    >
       {children}
     </RoleLayout>
   );

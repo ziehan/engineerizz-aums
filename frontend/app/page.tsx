@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import HeroPage from "@/components/homepage/HeroPage";
 import { LoginPrompt } from "@/components/homepage/LoginPrompt";
 import { PublicReportList } from "@/components/homepage/PublicReportList";
@@ -9,13 +10,19 @@ import { Navbar, type NavLink } from "@/components/layout/navbar";
 import { Loading } from "@/components/loading";
 import type { User } from "@/lib/types";
 import useReportList from "@/hooks/useReportList";
+import { getHomeByRole } from "@/hooks/useRoleGuard";
 
 const NAV_LINKS: NavLink[] = [
-  { label: "Buat Aduan", href: "/reports/create", matchPrefix: "/reports/create" },
+  {
+    label: "Buat Aduan",
+    href: "/reports/create",
+    matchPrefix: "/reports/create",
+  },
   { label: "Dashboard", href: "/dashboard", matchPrefix: "/dashboard" },
 ];
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_API_URL || "http://localhost:5000";
 
 type AuthState =
   | { status: "loading" }
@@ -24,6 +31,7 @@ type AuthState =
   | { status: "authenticated"; user: User };
 
 export default function LandingPage() {
+  const router = useRouter();
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const { reports, isLoading, error } = useReportList();
@@ -63,17 +71,24 @@ export default function LandingPage() {
 
         const json = await res.json();
         const user = json.data as User | undefined;
+        if (user && user.role?.toUpperCase() !== "CITIZEN") {
+          router.replace(getHomeByRole(user.role));
+          return;
+        }
         setAuth(user ? { status: "authenticated", user } : { status: "guest" });
       } catch (err: any) {
         if (err.name === "AbortError") return;
         console.warn("Gagal memeriksa sesi:", err);
-        setAuth({ status: "error", message: "Tidak dapat menghubungi server." });
+        setAuth({
+          status: "error",
+          message: "Tidak dapat menghubungi server.",
+        });
       }
     };
 
     checkSession();
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, router]);
 
   if (auth.status === "loading") {
     return <Loading text="Memuat halaman..." />;
@@ -101,7 +116,9 @@ export default function LandingPage() {
 
   return (
     <>
-      {isLoggedIn && <Navbar links={NAV_LINKS} user={auth.user} homeHref="/dashboard" />}
+      {isLoggedIn && (
+        <Navbar links={NAV_LINKS} user={auth.user} homeHref="/dashboard" />
+      )}
 
       <main className="flex min-h-screen flex-col gap-8 bg-neutral-50 p-2">
         <HeroPage />
@@ -109,8 +126,16 @@ export default function LandingPage() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-12 max-md:gap-2 md:px-2">
           {isLoggedIn ? (
             <>
-              <PublicReportsMap reports={reports} isLoading={isLoading} error={error} />
-              <PublicReportList reports={reports} isLoading={isLoading} error={error} />
+              <PublicReportsMap
+                reports={reports}
+                isLoading={isLoading}
+                error={error}
+              />
+              <PublicReportList
+                reports={reports}
+                isLoading={isLoading}
+                error={error}
+              />
             </>
           ) : (
             <LoginPrompt />

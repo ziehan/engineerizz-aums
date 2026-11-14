@@ -133,8 +133,8 @@ class ReportController {
   async create(req, res, next) {
     try {
       const input = { ...(req.body ?? {}) };
-      const reporterId =
-        req.user?.userId || req.user?.id || req.body?.reporterId || null;
+      delete input.reporterId;
+      const reporterId = req.user?.userId || req.user?.id || null;
       if (reporterId) {
         input.reporterId = reporterId;
       }
@@ -384,8 +384,8 @@ class ReportController {
         imageBase64: req.processedImageBase64 || null,
         imageMimeType: req.processedImageMimeType || null,
       };
-      const reporterId =
-        req.user?.userId || req.user?.id || req.body?.reporterId || null;
+      delete input.reporterId;
+      const reporterId = req.user?.userId || req.user?.id || null;
       if (reporterId) {
         input.reporterId = reporterId;
       }
