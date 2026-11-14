@@ -1,5 +1,6 @@
 import { formatDateTime } from "@/lib/format";
 import type { AuditLog } from "@/lib/report-types";
+import { formatAuditLogSummary } from "./ai-summary-card";
 
 const AGENTS = [
   { key: "INTAKE_AGENT", label: "Intake Agent" },
@@ -9,7 +10,6 @@ const AGENTS = [
 
 interface AgentLogProps {
   logs?: AuditLog[];
-  /** Backend mengosongkan log untuk role selain CRM/Admin. */
   restricted?: boolean;
 }
 
@@ -25,7 +25,6 @@ function formatJson(data: unknown): string {
   return JSON.stringify(data, null, 2);
 }
 
-/** Log tiga agen AI (Intake, Planning, Verification). */
 export function AgentLog({ logs = [], restricted }: AgentLogProps) {
   return (
     <section className="rounded-2xl bg-blue-900 p-5 md:p-8">
@@ -48,17 +47,21 @@ export function AgentLog({ logs = [], restricted }: AgentLogProps) {
                         className="border-b border-neutral-800 pb-3 last:border-b-0 last:pb-0"
                       >
                         <p className="font-medium text-neutral-200">
-                          {log.details}
+                          {formatAuditLogSummary(log)}
                         </p>
                         <p className="mt-1 text-[10px] text-neutral-500">
                           {formatDateTime(log.timestamp)}
                           {log.confidenceScore != null &&
-                            ` · ${Math.round(log.confidenceScore * 100)}%`}
+                            ` · ${Math.round(
+                              log.confidenceScore <= 1
+                                ? log.confidenceScore * 100
+                                : log.confidenceScore,
+                            )}%`}
                         </p>
 
                         {log.response && (
-                          <details className="group mt-2.5 rounded-lg border border-neutral-800 bg-neutral-900 text-[11px] overflow-hidden">
-                            <summary className="flex cursor-pointer items-center justify-between px-3 py-1.5 font-mono text-[11px] text-blue-400 hover:text-blue-300 hover:bg-neutral-800/60 select-none transition-colors">
+                          <details className="group mt-2.5 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900 text-[11px]">
+                            <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-1.5 font-mono text-[11px] text-blue-400 transition-colors hover:bg-neutral-800/60 hover:text-blue-300">
                               <span className="flex items-center gap-1.5 font-semibold">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400" />
                                 JSON Response
@@ -68,7 +71,7 @@ export function AgentLog({ logs = [], restricted }: AgentLogProps) {
                               </span>
                             </summary>
                             <div className="max-h-60 overflow-x-auto overflow-y-auto border-t border-neutral-800 bg-neutral-950 p-3">
-                              <pre className="font-mono text-[10px] text-emerald-400 leading-relaxed whitespace-pre-wrap break-all">
+                              <pre className="whitespace-pre-wrap break-all font-mono text-[10px] leading-relaxed text-emerald-400">
                                 {formatJson(log.response)}
                               </pre>
                             </div>
@@ -76,8 +79,8 @@ export function AgentLog({ logs = [], restricted }: AgentLogProps) {
                         )}
 
                         {log.payload && (
-                          <details className="group mt-1.5 rounded-lg border border-neutral-800 bg-neutral-900 text-[11px] overflow-hidden">
-                            <summary className="flex cursor-pointer items-center justify-between px-3 py-1.5 font-mono text-[11px] text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800/60 select-none transition-colors">
+                          <details className="group mt-1.5 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900 text-[11px]">
+                            <summary className="flex cursor-pointer select-none items-center justify-between px-3 py-1.5 font-mono text-[11px] text-neutral-400 transition-colors hover:bg-neutral-800/60 hover:text-neutral-300">
                               <span className="flex items-center gap-1.5">
                                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-500" />
                                 Payload Input
@@ -87,7 +90,7 @@ export function AgentLog({ logs = [], restricted }: AgentLogProps) {
                               </span>
                             </summary>
                             <div className="max-h-60 overflow-x-auto overflow-y-auto border-t border-neutral-800 bg-neutral-950 p-3">
-                              <pre className="font-mono text-[10px] text-neutral-300 leading-relaxed whitespace-pre-wrap break-all">
+                              <pre className="whitespace-pre-wrap break-all font-mono text-[10px] leading-relaxed text-neutral-300">
                                 {formatJson(log.payload)}
                               </pre>
                             </div>

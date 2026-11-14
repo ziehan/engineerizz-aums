@@ -1,5 +1,3 @@
-/** Tipe data laporan sesuai Backend AUMS. */
-
 export type ReportStatus =
   | "Pending"
   | "PENDING_AI"
@@ -17,6 +15,13 @@ export interface ActionPlan {
   estimatedDays: number;
   actionSteps: string[];
   confidenceScore?: number | null;
+  confidenceMetadata?: {
+    agencyConfidence?: number;
+    planConfidence?: number;
+    dispatchReason?: string | null;
+    reasoning?: string | null;
+    ragContext?: unknown[];
+  } | null;
   approvedBy?: string | null;
   approvedAt?: string | null;
   createdAt?: string;
